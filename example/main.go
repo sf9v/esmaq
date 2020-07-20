@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,28 +14,28 @@ import (
 
 func main() {
 	switchExample()
+	// generateSwitch()
 }
 
 func switchExample() {
 	mySwitch := myswitch.NewMySwitch(&myswitch.Callbacks{
 		SwitchOff: func(ctx context.Context) (err error) {
-			fmt.Println("switched off!")
+			fmt.Println("switched off callback")
 			return
 		},
 		SwitchOn: func(ctx context.Context) (err error) {
-			fmt.Println("switched on")
-			return
+			fmt.Println("switched on callback")
+			return errors.New("something went wrong with the switch")
 		},
 	})
 	ctx := context.Background()
 
 	err := mySwitch.SwitchOn(myswitch.CtxWtFrom(ctx, myswitch.StateOff))
 	checkErr(err)
-
 }
 
 func generateSwitch() {
-	lightBulb := []esmaq.StateConfig{
+	mySwitch := []esmaq.StateConfig{
 		{
 			From: "off",
 			Transitions: []esmaq.Transitions{
@@ -64,7 +65,7 @@ func generateSwitch() {
 	err = esmaq.Gen(esmaq.Schema{
 		Name:   "MySwitch",
 		Pkg:    "myswitch",
-		States: lightBulb,
+		States: mySwitch,
 	}, out)
 	checkErr(err)
 }
