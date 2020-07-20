@@ -29,6 +29,6 @@ func TestStateMachine(t *testing.T) {
 		},
 	})
 
-	err := core.Fire("switchOn", "on")
+	err := core.CanTransition("switchOn", "on")
 	assert.NoError(t, err)
 }

@@ -9,15 +9,15 @@ type Core struct {
 	stateMap map[State]*internal.State
 }
 
-// Fire fires an event from a state
-func (c *Core) Fire(e Event, from State) error {
+// CanTransition will return an error if transition is not allowed
+func (c *Core) CanTransition(e Event, from State) error {
 	// get from state
 	fs, err := c.getState(from)
 	if err != nil {
 		return err
 	}
 
-	// verify transition is allowed
+	// verify event is allowed
 	tr, ok := fs.Transitions[string(e)]
 	if !ok {
 		return newUndefinedEventError(e, from)

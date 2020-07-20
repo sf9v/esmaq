@@ -1,37 +1,33 @@
 package main
 
 import (
-	"context"
-	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/stevenferrer/esmaq"
-	"github.com/stevenferrer/esmaq/example/internal/matter"
-	"github.com/stevenferrer/esmaq/example/internal/myswitch"
 )
 
 func main() {
-	switchExample()
-	// generateSwitch()
+	// switchExample()
+	generateSwitch()
+	generateMatter()
 }
 
 func switchExample() {
-	mySwitch := myswitch.NewMySwitch(&myswitch.Callbacks{
-		SwitchOff: func(ctx context.Context) (err error) {
-			fmt.Println("switched off callback")
-			return
-		},
-		SwitchOn: func(ctx context.Context) (err error) {
-			fmt.Println("switched on callback")
-			return errors.New("something went wrong with the switch")
-		},
-	})
-	ctx := context.Background()
+	// eventHandlers := myswitch.EventHandlers{
+	// 	SwitchOff: &myswitch.SwitchOffEventHandlers{
+	// 		OnBefore: func(ctx context.Context) error {
+	// 			fmt.Println("")
+	// 			return nil
+	// 		},
+	// 	},
+	// }
 
-	err := mySwitch.SwitchOn(myswitch.CtxWtFrom(ctx, myswitch.StateOff))
-	checkErr(err)
+	// mySwitch := myswitch.NewMySwitch()
+	// ctx := context.Background()
+
+	// err := mySwitch.SwitchOn(myswitch.CtxWtFrom(ctx, myswitch.StateOff))
+	// checkErr(err)
 }
 
 func generateSwitch() {
@@ -42,6 +38,14 @@ func generateSwitch() {
 				{
 					Event: "switchOn",
 					To:    "on",
+					Callback: esmaq.Callback{
+						Ins: esmaq.Ins{
+							"a": 1,
+						},
+						Outs: esmaq.Outs{
+							"b": 1.0,
+						},
+					},
 				},
 			},
 		},
@@ -71,35 +75,35 @@ func generateSwitch() {
 }
 
 func matterExample() {
-	myMatter := matter.NewMatter(&matter.Callbacks{
-		Condense: func(ctx context.Context) (err error) {
-			fmt.Print("condensed")
-			return
-		},
-		Freeze: func(ctx context.Context) (err error) {
-			fmt.Println("freezed")
-			return
-		},
-		Melt: func(ctx context.Context) (err error) {
-			fmt.Println("melted")
-			return
-		},
-		Vaporize: func(ctx context.Context) (err error) {
-			fmt.Println("liquid vaporized")
-			next, ok := matter.ToCtx(ctx)
-			if !ok {
-				panic("to state not set")
-			}
+	// myMatter := matter.NewMatter(&matter.Callbacks{
+	// 	Condense: func(ctx context.Context) (err error) {
+	// 		fmt.Print("condensed")
+	// 		return
+	// 	},
+	// 	Freeze: func(ctx context.Context) (err error) {
+	// 		fmt.Println("freezed")
+	// 		return
+	// 	},
+	// 	Melt: func(ctx context.Context) (err error) {
+	// 		fmt.Println("melted")
+	// 		return
+	// 	},
+	// 	Vaporize: func(ctx context.Context) (err error) {
+	// 		fmt.Println("liquid vaporized")
+	// 		next, ok := matter.ToCtx(ctx)
+	// 		if !ok {
+	// 			panic("to state not set")
+	// 		}
 
-			fmt.Printf("next state is %q\n", next)
-			return
-		},
-	})
+	// 		fmt.Printf("next state is %q\n", next)
+	// 		return
+	// 	},
+	// })
 
-	ctx := context.Background()
+	// ctx := context.Background()
 
-	err := myMatter.Vaporize(matter.CtxWtFrom(ctx, matter.StateLiquid))
-	checkErr(err)
+	// err := myMatter.Vaporize(matter.CtxWtFrom(ctx, matter.StateLiquid))
+	// checkErr(err)
 }
 
 func generateMatter() {
