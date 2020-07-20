@@ -7,64 +7,69 @@ import (
 	esmaq "github.com/stevenferrer/esmaq"
 )
 
-type State esmaq.State
+type State esmaq.StateType
 
 const (
 	StateOff State = "off"
 	StateOn  State = "on"
 )
 
-type Event esmaq.Event
+type Event esmaq.EventType
 
 const (
 	EventSwitchOn  Event = "switchOn"
 	EventSwitchOff Event = "switchOff"
 )
 
+type ctxKey int
+
+const (
+	fromKey ctxKey = iota
+	toKey
+)
+
 type MySwitch struct {
-	core          *esmaq.Core
-	eventHandlers *EventHandlers
+	core      *esmaq.Core
+	callbacks *Callbacks
 }
 
-type EventHandlers struct {
-	SwitchOn  *SwitchOnEventHandlers
-	SwitchOff *SwitchOffEventHandlers
+type Callbacks struct {
+	SwitchOn  func(ctx context.Context, a int) (b string, err error)
+	SwitchOff func(ctx context.Context) (err error)
 }
 
-type SwitchOnEventHandlers struct {
-	OnTransition func(ctx context.Context, a int) (b float32, err error)
-	OnEnter      func(context.Context) error
+type Actions struct {
+	Off *esmaq.Actions
+	On  *esmaq.Actions
 }
 
-type SwitchOffEventHandlers struct {
-	OnTransition func(ctx context.Context) (err error)
-	OnEnter      func(context.Context) error
-}
-
-func (sm *MySwitch) SwitchOn(ctx context.Context, a int) (b float32, err error) {
+func (sm *MySwitch) SwitchOn(ctx context.Context, a int) (b string, err error) {
 	from, ok := fromCtx(ctx)
 	if !ok {
-		return 0, errors.New("\"from\" state not set in context")
+		return "", errors.New("\"from\" state not set in context")
 	}
 
-	// see transition is allowed
-	err = sm.core.CanTransition(esmaq.Event(EventSwitchOn), esmaq.State(from))
+	fromState, err := sm.core.GetState(esmaq.StateType(from))
 	if err != nil {
-		return 0, err
+		return "", err
+	}
+
+	toState, err := sm.core.Transition(esmaq.EventType(EventSwitchOn), esmaq.StateType(from))
+	if err != nil {
+		return "", err
 	}
 
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateOn)
 
-	b, err = sm.eventHandlers.SwitchOn.OnTransition(ctx, a)
+	fromState.Actions.OnExit()
+
+	b, err = sm.callbacks.SwitchOn(ctx, a)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
-	err = sm.eventHandlers.SwitchOn.OnEnter(ctx)
-	if err != nil {
-		return 0, err
-	}
+	toState.Actions.OnEnter()
 
 	return b, nil
 }
@@ -75,8 +80,12 @@ func (sm *MySwitch) SwitchOff(ctx context.Context) (err error) {
 		return errors.New("\"from\" state not set in context")
 	}
 
-	// see transition is allowed
-	err = sm.core.CanTransition(esmaq.Event(EventSwitchOff), esmaq.State(from))
+	fromState, err := sm.core.GetState(esmaq.StateType(from))
+	if err != nil {
+		return err
+	}
+
+	toState, err := sm.core.Transition(esmaq.EventType(EventSwitchOff), esmaq.StateType(from))
 	if err != nil {
 		return err
 	}
@@ -84,25 +93,17 @@ func (sm *MySwitch) SwitchOff(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateOff)
 
-	err = sm.eventHandlers.SwitchOff.OnTransition(ctx)
+	fromState.Actions.OnExit()
+
+	err = sm.callbacks.SwitchOff(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = sm.eventHandlers.SwitchOff.OnEnter(ctx)
-	if err != nil {
-		return err
-	}
+	toState.Actions.OnEnter()
 
 	return nil
 }
-
-type ctxKey int
-
-const (
-	fromKey ctxKey = iota
-	toKey
-)
 
 func CtxWtFrom(ctx context.Context, from State) context.Context {
 	return context.WithValue(ctx, fromKey, from)
@@ -122,31 +123,33 @@ func ToCtx(ctx context.Context) (State, bool) {
 	return to, ok
 }
 
-func NewMySwitch(eventHandlers *EventHandlers) *MySwitch {
+func NewMySwitch(actions *Actions, callbacks *Callbacks) *MySwitch {
 	stateConfigs := []esmaq.StateConfig{
 		{
-			From: esmaq.State(StateOff),
-			Transitions: []esmaq.Transitions{
+			From:    esmaq.StateType(StateOff),
+			Actions: actions.Off,
+			Transitions: []esmaq.TransitionConfig{
 				{
-					Event: esmaq.Event(EventSwitchOn),
-					To:    esmaq.State(StateOn),
+					Event: esmaq.EventType(EventSwitchOn),
+					To:    esmaq.StateType(StateOn),
 				},
 			},
 		},
 		{
-			From: esmaq.State(StateOn),
-			Transitions: []esmaq.Transitions{
+			From:    esmaq.StateType(StateOn),
+			Actions: actions.On,
+			Transitions: []esmaq.TransitionConfig{
 				{
-					Event: esmaq.Event(EventSwitchOff),
-					To:    esmaq.State(StateOff),
+					Event: esmaq.EventType(EventSwitchOff),
+					To:    esmaq.StateType(StateOff),
 				},
 			},
 		},
 	}
 
 	mySwitch := &MySwitch{
-		core:          esmaq.NewCore(stateConfigs),
-		eventHandlers: eventHandlers,
+		core:      esmaq.NewCore(stateConfigs),
+		callbacks: callbacks,
 	}
 
 	return mySwitch

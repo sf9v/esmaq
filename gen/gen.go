@@ -1,4 +1,4 @@
-package esmaq
+package gen
 
 import (
 	"fmt"
@@ -7,17 +7,9 @@ import (
 
 	"github.com/dave/jennifer/jen"
 	"github.com/iancoleman/strcase"
-)
 
-// event handler
-// type switchOnEventHandlers struct {
-// 	onBefore func()
-// 	onExit func()
-//	// this is the only method that we want to have custom params
-// 	onFire func()
-// 	onEnter func()
-// 	onAfter func()
-// }
+	"github.com/stevenferrer/esmaq"
+)
 
 const pkgPath = "github.com/stevenferrer/esmaq"
 
@@ -28,18 +20,21 @@ type Schema struct {
 	// Pkg is package name
 	Pkg string
 	// States is the states config
-	States []StateConfig
+	States []esmaq.StateConfig
 }
 
 // Gen generates the state machine
 func Gen(cfg Schema, out io.Writer) error {
+	// default name
 	name := "StateMachine"
 	if len(cfg.Name) > 0 {
 		name = cfg.Name
 	}
 
-	name = toCamel(name)
+	// camelize name
+	name = toCam(name)
 
+	//default package name
 	pkg := "main"
 	if len(cfg.Pkg) > 0 {
 		pkg = cfg.Pkg
@@ -51,25 +46,32 @@ func Gen(cfg Schema, out io.Writer) error {
 	rcvr := "sm"
 	rcvrType := "*" + name
 
-	f.Type().Id("State").Qual(pkgPath, "State")
+	f.Type().Id("State").Qual(pkgPath, "StateType")
 	f.Const().DefsFunc(func(g *jen.Group) {
 		for _, stateCfg := range cfg.States {
 			s := string(stateCfg.From)
-			sName := toCamel(fmt.Sprintf("state_%s", s))
+			sName := toCam(fmt.Sprintf("state_%s", s))
 			g.Id(sName).Id("State").Op("=").Lit(s)
 		}
 	})
 
 	f.Line()
-	f.Type().Id("Event").Qual(pkgPath, "Event")
+	f.Type().Id("Event").Qual(pkgPath, "EventType")
 	f.Const().DefsFunc(func(g *jen.Group) {
 		for _, stateCfg := range cfg.States {
 			for _, trsn := range stateCfg.Transitions {
 				e := string(trsn.Event)
-				eName := toCamel(fmt.Sprintf("event_%s", trsn.Event))
+				eName := toCam(fmt.Sprintf("event_%s", trsn.Event))
 				g.Id(eName).Id("Event").Op("=").Lit(e)
 			}
 		}
+	})
+
+	f.Type().Id("ctxKey").
+		Int()
+	f.Const().DefsFunc(func(g *jen.Group) {
+		g.Id("fromKey").Id("ctxKey").Op("=").Id("iota")
+		g.Id("toKey")
 	})
 
 	cbcArgs := []jen.Code{}
@@ -82,10 +84,7 @@ func Gen(cfg Schema, out io.Writer) error {
 
 	for _, stateCfg := range cfg.States {
 		for _, trsn := range stateCfg.Transitions {
-			fnName := toCamel(string(trsn.Event))
-
-			// cbName := toCamel(fmt.Sprintf("%s_cb", fnName))
-			// TODO: separate method and callback parameters
+			fnName := toCam(string(trsn.Event))
 
 			// input args
 			ins := []jen.Code{
@@ -117,8 +116,8 @@ func Gen(cfg Schema, out io.Writer) error {
 			outs = append(outs, jen.Id("err").Error())
 			outIDs = append(outIDs, jen.Id("err"))
 
-			handlerName := fnName
-			cbcArgs = append(cbcArgs, jen.Id(handlerName).Func().
+			cbName := fnName
+			cbcArgs = append(cbcArgs, jen.Id(cbName).Func().
 				Params(ins...).Params(outs...))
 
 			methods = append(methods, jen.Func().
@@ -141,16 +140,30 @@ func Gen(cfg Schema, out io.Writer) error {
 							g.Return(rets...)
 						}).Line()
 
-					g.Comment("see transition is allowed")
-					g.Id("err").Op("=").Id(rcvr).
+					g.List(jen.Id("fromState"), jen.Id("err")).
+						Op(":=").Id(rcvr).
 						Dot("core").
-						Dot("CanTransition").
+						Dot("GetState").
+						Call(jen.Qual(pkgPath, "StateType").
+							Op("(").
+							Id("from").
+							Op(")"))
+					g.If(jen.Err().Op("!=").Nil()).
+						BlockFunc(func(g *jen.Group) {
+							rets := append(errRets, jen.Id("err"))
+							g.Return(rets...)
+						}).Line()
+
+					g.List(jen.Id("toState"), jen.Id("err")).
+						Op(":=").Id(rcvr).
+						Dot("core").
+						Dot("Transition").
 						Call(
-							jen.Qual(pkgPath, "Event").
+							jen.Qual(pkgPath, "EventType").
 								Op("(").
-								Id(toCamel("event_"+string(trsn.Event))).
+								Id(toCam("event_"+string(trsn.Event))).
 								Op(")"),
-							jen.Qual(pkgPath, "State").
+							jen.Qual(pkgPath, "StateType").
 								Op("(").
 								Id("from").
 								Op(")"),
@@ -161,43 +174,22 @@ func Gen(cfg Schema, out io.Writer) error {
 							g.Return(rets...)
 						}).Line()
 
-					toState := toCamel("state_" + string(trsn.To))
+					toState := toCam("state_" + string(trsn.To))
 					g.Comment(`inject "to" in context`)
 					g.Id("ctx").Op("=").Id("ctxWtTo").Call(
 						jen.Id("ctx"),
 						jen.Id(toState),
 					).Line()
 
-					// g.Err().Op("=").
-					// 	Id(rcvr).
-					// 	Dot("eventHandlers").
-					// 	Dot(handlerName).
-					// 	Dot("OnBefore").
-					// 	Call(jen.Id("ctx"))
-					// g.If(jen.Err().Op("!=").Nil()).
-					// 	BlockFunc(func(g *jen.Group) {
-					// 		rets := append(errRets, jen.Id("err"))
-					// 		g.Return(rets...)
-					// 	}).Line()
-
-					// // leaving previous state
-					// g.Err().Op("=").
-					// 	Id(rcvr).
-					// 	Dot("eventHandlers").
-					// 	Dot(handlerName).
-					// 	Dot("OnLeave").
-					// 	Call(jen.Id("ctx"))
-					// g.If(jen.Err().Op("!=").Nil()).
-					// 	BlockFunc(func(g *jen.Group) {
-					// 		rets := append(errRets, jen.Id("err"))
-					// 		g.Return(rets...)
-					// 	}).Line()
+					g.Id("fromState").
+						Dot("Actions").
+						Dot("OnExit").
+						Call().Line()
 
 					g.List(outIDs...).Op("=").
 						Id(rcvr).
-						Dot("eventHandlers").
-						Dot(handlerName).
-						Dot("OnTransition").
+						Dot("callbacks").
+						Dot(cbName).
 						Call(inIDs...)
 					g.If(jen.Err().Op("!=").Nil()).
 						BlockFunc(func(g *jen.Group) {
@@ -205,31 +197,12 @@ func Gen(cfg Schema, out io.Writer) error {
 							g.Return(rets...)
 						}).Line()
 
-					g.Err().Op("=").
-						Id(rcvr).
-						Dot("eventHandlers").
-						Dot(handlerName).
+					g.Id("toState").
+						Dot("Actions").
 						Dot("OnEnter").
-						Call(jen.Id("ctx"))
-					g.If(jen.Err().Op("!=").Nil()).
-						BlockFunc(func(g *jen.Group) {
-							rets := append(errRets, jen.Id("err"))
-							g.Return(rets...)
-						}).Line()
+						Call().Line()
 
-					// g.Err().Op("=").
-					// 	Id(rcvr).
-					// 	Dot("eventHandlers").
-					// 	Dot(handlerName).
-					// 	Dot("OnAfter").
-					// 	Call(jen.Id("ctx"))
-					// g.If(jen.Err().Op("!=").Nil()).
-					// 	BlockFunc(func(g *jen.Group) {
-					// 		rets := append(errRets, jen.Id("err"))
-					// 		g.Return(rets...)
-					// 	}).Line()
-
-					g.Line().Return(okRets...)
+					g.Return(okRets...)
 				}))
 
 			fnToCbArgs[fnName] = struct {
@@ -243,54 +216,23 @@ func Gen(cfg Schema, out io.Writer) error {
 		}
 	}
 
-	f.Line()
-
 	// state machine type def
 	f.Type().Id(name).Struct(
 		jen.Id("core").Op("*").Qual(pkgPath, "Core"),
-		jen.Id("eventHandlers").Op("*").Id("EventHandlers"),
+		jen.Id("callbacks").Op("*").Id("Callbacks"),
 	).Line()
 
-	f.Type().Id("EventHandlers").
-		StructFunc(func(g *jen.Group) {
-			for fnName := range fnToCbArgs {
-				g.Id(fnName).Op("*").Id(fnName + "EventHandlers")
-			}
-		}).
-		Line()
-
-	for fnName, args := range fnToCbArgs {
-		f.Type().Id(toCamel(fnName + "EventHandlers")).
-			StructFunc(func(g *jen.Group) {
-				// g.Id("OnBefore").Func().
-				// 	Params(jen.Qual("context", "Context")).
-				// 	Params(jen.Id("error"))
-				// g.Id("OnLeave").Func().
-				// 	Params(jen.Qual("context", "Context")).
-				// 	Params(jen.Id("error"))
-				g.Id("OnTransition").Func().
-					Params(args.ins...).
-					Params(args.outs...)
-				g.Id("OnEnter").Func().
-					Params(jen.Qual("context", "Context")).
-					Params(jen.Id("error"))
-				// g.Id("OnAfter").Func().
-				// 	Params(jen.Qual("context", "Context")).
-				// 	Params(jen.Id("error"))
-			}).Line()
-	}
-
-	for _, c := range methods {
-		f.Add(c).Line()
-	}
-
-	// context helpers
-	f.Type().Id("ctxKey").
-		Int()
-	f.Const().DefsFunc(func(g *jen.Group) {
-		g.Id("fromKey").Id("ctxKey").Op("=").Id("iota")
-		g.Id("toKey")
+	// callbacks type def
+	f.Type().Id("Callbacks").Struct(cbcArgs...).Line()
+	f.Type().Id("Actions").StructFunc(func(g *jen.Group) {
+		for _, stateCfg := range cfg.States {
+			g.Id(toCam(string(stateCfg.From))).Op("*").Qual(pkgPath, "Actions")
+		}
 	})
+
+	for _, m := range methods {
+		f.Add(m).Line()
+	}
 
 	f.Func().Id("CtxWtFrom").
 		Params(jen.Id("ctx").Qual("context", "Context"),
@@ -340,33 +282,37 @@ func Gen(cfg Schema, out io.Writer) error {
 			g.Return(jen.Id("to"), jen.Id("ok"))
 		}).Line()
 
-	f.Func().Id("New" + toCamel(name)).
-		Params(jen.Id("eventHandlers").Op("*").Id("EventHandlers")).
+	f.Func().Id("New"+toCam(name)).
+		Params(
+			jen.Id("actions").Op("*").Id("Actions"),
+			jen.Id("callbacks").Op("*").Id("Callbacks"),
+		).
 		Params(jen.Id("*" + name)).
 		BlockFunc(func(g *jen.Group) {
 			g.Id("stateConfigs").Op(":=").Op("[]").
 				Qual(pkgPath, "StateConfig").
 				BlockFunc(func(g *jen.Group) {
-					for _, state := range cfg.States {
+					for _, stateCfg := range cfg.States {
 						g.BlockFunc(func(g *jen.Group) {
 							g.Id("From").Op(":").
-								Qual(pkgPath, "State").Op("(").
-								Id(toCamel("state_" + string(state.From))).
+								Qual(pkgPath, "StateType").Op("(").
+								Id(toCam("state_" + string(stateCfg.From))).
 								Op(")").
 								Op(",")
+							g.Id("Actions").Op(":").Id("actions").Dot(toCam(string(stateCfg.From))).Op(",")
 							g.Id("Transitions").Op(":").Op("[]").
-								Qual(pkgPath, "Transitions").
+								Qual(pkgPath, "TransitionConfig").
 								BlockFunc(func(g *jen.Group) {
-									for _, trsn := range state.Transitions {
+									for _, trsn := range stateCfg.Transitions {
 										g.BlockFunc(func(g *jen.Group) {
 											g.Id("Event").Op(":").
-												Qual(pkgPath, "Event").Op("(").
-												Id(toCamel("event_" + string(trsn.Event))).
+												Qual(pkgPath, "EventType").Op("(").
+												Id(toCam("event_" + string(trsn.Event))).
 												Op(")").
 												Op(",")
 											g.Id("To").Op(":").
-												Qual(pkgPath, "State").Op("(").
-												Id(toCamel("state_" + string(trsn.To))).
+												Qual(pkgPath, "StateType").Op("(").
+												Id(toCam("state_" + string(trsn.To))).
 												Op(")").
 												Op(",")
 										}).Op(",")
@@ -376,17 +322,15 @@ func Gen(cfg Schema, out io.Writer) error {
 					}
 				}).Line()
 
-			smVar := strcase.ToLowerCamel(name)
-			g.Id(smVar).
+			g.Id(toLowCam(name)).
 				Op(":=").Op("&").Id(name).
 				BlockFunc(func(g *jen.Group) {
 					g.Id("core").Op(":").
 						Qual(pkgPath, "NewCore").
 						Params(jen.Id("stateConfigs")).Op(",")
-					g.Id("eventHandlers").Op(":").
-						Id("eventHandlers").Op(",")
+					g.Id("callbacks").Op(":").Id("callbacks").Op(",")
 				}).Line()
-			g.Return().Id(smVar)
+			g.Return().Id(toLowCam(name))
 		})
 
 	return f.Render(out)
@@ -452,6 +396,10 @@ func getZeroVal(t reflect.Type) jen.Code {
 	return jen.Nil()
 }
 
-func toCamel(s string) string {
+func toCam(s string) string {
 	return strcase.ToCamel(s)
+}
+
+func toLowCam(s string) string {
+	return strcase.ToLowerCamel(s)
 }

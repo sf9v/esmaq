@@ -1,22 +1,28 @@
 package esmaq
 
 type (
-	// State is a state type
-	State string
+	// StateType is a state type
+	StateType string
 	// Event is an event type
-	Event string
+	EventType string
 )
 
 // StateConfig is a state config
 type StateConfig struct {
-	From        State
-	Transitions []Transitions
+	From        StateType
+	Actions     *Actions
+	Transitions []TransitionConfig
+}
+
+type Actions struct {
+	OnEnter func()
+	OnExit  func()
 }
 
 // Transitions is a transition config
-type Transitions struct {
-	To       State
-	Event    Event
+type TransitionConfig struct {
+	To       StateType
+	Event    EventType
 	Callback Callback
 }
 

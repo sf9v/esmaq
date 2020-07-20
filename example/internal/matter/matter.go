@@ -7,7 +7,7 @@ import (
 	esmaq "github.com/stevenferrer/esmaq"
 )
 
-type State esmaq.State
+type State esmaq.StateType
 
 const (
 	StateSolid  State = "solid"
@@ -15,7 +15,7 @@ const (
 	StateGas    State = "gas"
 )
 
-type Event esmaq.Event
+type Event esmaq.EventType
 
 const (
 	EventMelt     Event = "melt"
@@ -24,36 +24,29 @@ const (
 	EventCondense Event = "condense"
 )
 
+type ctxKey int
+
+const (
+	fromKey ctxKey = iota
+	toKey
+)
+
 type Matter struct {
-	core          *esmaq.Core
-	eventHandlers *EventHandlers
+	core      *esmaq.Core
+	callbacks *Callbacks
 }
 
-type EventHandlers struct {
-	Melt     *MeltEventHandlers
-	Freeze   *FreezeEventHandlers
-	Vaporize *VaporizeEventHandlers
-	Condense *CondenseEventHandlers
+type Callbacks struct {
+	Melt     func(ctx context.Context) (err error)
+	Freeze   func(ctx context.Context) (err error)
+	Vaporize func(ctx context.Context) (err error)
+	Condense func(ctx context.Context) (err error)
 }
 
-type MeltEventHandlers struct {
-	OnTransition func(ctx context.Context) (err error)
-	OnEnter      func(context.Context) error
-}
-
-type FreezeEventHandlers struct {
-	OnTransition func(ctx context.Context) (err error)
-	OnEnter      func(context.Context) error
-}
-
-type VaporizeEventHandlers struct {
-	OnTransition func(ctx context.Context) (err error)
-	OnEnter      func(context.Context) error
-}
-
-type CondenseEventHandlers struct {
-	OnTransition func(ctx context.Context) (err error)
-	OnEnter      func(context.Context) error
+type Actions struct {
+	Solid  *esmaq.Actions
+	Liquid *esmaq.Actions
+	Gas    *esmaq.Actions
 }
 
 func (sm *Matter) Melt(ctx context.Context) (err error) {
@@ -62,8 +55,12 @@ func (sm *Matter) Melt(ctx context.Context) (err error) {
 		return errors.New("\"from\" state not set in context")
 	}
 
-	// see transition is allowed
-	err = sm.core.CanTransition(esmaq.Event(EventMelt), esmaq.State(from))
+	fromState, err := sm.core.GetState(esmaq.StateType(from))
+	if err != nil {
+		return err
+	}
+
+	toState, err := sm.core.Transition(esmaq.EventType(EventMelt), esmaq.StateType(from))
 	if err != nil {
 		return err
 	}
@@ -71,15 +68,14 @@ func (sm *Matter) Melt(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateLiquid)
 
-	err = sm.eventHandlers.Melt.OnTransition(ctx)
+	fromState.Actions.OnExit()
+
+	err = sm.callbacks.Melt(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = sm.eventHandlers.Melt.OnEnter(ctx)
-	if err != nil {
-		return err
-	}
+	toState.Actions.OnEnter()
 
 	return nil
 }
@@ -90,8 +86,12 @@ func (sm *Matter) Freeze(ctx context.Context) (err error) {
 		return errors.New("\"from\" state not set in context")
 	}
 
-	// see transition is allowed
-	err = sm.core.CanTransition(esmaq.Event(EventFreeze), esmaq.State(from))
+	fromState, err := sm.core.GetState(esmaq.StateType(from))
+	if err != nil {
+		return err
+	}
+
+	toState, err := sm.core.Transition(esmaq.EventType(EventFreeze), esmaq.StateType(from))
 	if err != nil {
 		return err
 	}
@@ -99,15 +99,14 @@ func (sm *Matter) Freeze(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateSolid)
 
-	err = sm.eventHandlers.Freeze.OnTransition(ctx)
+	fromState.Actions.OnExit()
+
+	err = sm.callbacks.Freeze(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = sm.eventHandlers.Freeze.OnEnter(ctx)
-	if err != nil {
-		return err
-	}
+	toState.Actions.OnEnter()
 
 	return nil
 }
@@ -118,8 +117,12 @@ func (sm *Matter) Vaporize(ctx context.Context) (err error) {
 		return errors.New("\"from\" state not set in context")
 	}
 
-	// see transition is allowed
-	err = sm.core.CanTransition(esmaq.Event(EventVaporize), esmaq.State(from))
+	fromState, err := sm.core.GetState(esmaq.StateType(from))
+	if err != nil {
+		return err
+	}
+
+	toState, err := sm.core.Transition(esmaq.EventType(EventVaporize), esmaq.StateType(from))
 	if err != nil {
 		return err
 	}
@@ -127,15 +130,14 @@ func (sm *Matter) Vaporize(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateGas)
 
-	err = sm.eventHandlers.Vaporize.OnTransition(ctx)
+	fromState.Actions.OnExit()
+
+	err = sm.callbacks.Vaporize(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = sm.eventHandlers.Vaporize.OnEnter(ctx)
-	if err != nil {
-		return err
-	}
+	toState.Actions.OnEnter()
 
 	return nil
 }
@@ -146,8 +148,12 @@ func (sm *Matter) Condense(ctx context.Context) (err error) {
 		return errors.New("\"from\" state not set in context")
 	}
 
-	// see transition is allowed
-	err = sm.core.CanTransition(esmaq.Event(EventCondense), esmaq.State(from))
+	fromState, err := sm.core.GetState(esmaq.StateType(from))
+	if err != nil {
+		return err
+	}
+
+	toState, err := sm.core.Transition(esmaq.EventType(EventCondense), esmaq.StateType(from))
 	if err != nil {
 		return err
 	}
@@ -155,25 +161,17 @@ func (sm *Matter) Condense(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateLiquid)
 
-	err = sm.eventHandlers.Condense.OnTransition(ctx)
+	fromState.Actions.OnExit()
+
+	err = sm.callbacks.Condense(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = sm.eventHandlers.Condense.OnEnter(ctx)
-	if err != nil {
-		return err
-	}
+	toState.Actions.OnEnter()
 
 	return nil
 }
-
-type ctxKey int
-
-const (
-	fromKey ctxKey = iota
-	toKey
-)
 
 func CtxWtFrom(ctx context.Context, from State) context.Context {
 	return context.WithValue(ctx, fromKey, from)
@@ -193,44 +191,47 @@ func ToCtx(ctx context.Context) (State, bool) {
 	return to, ok
 }
 
-func NewMatter(eventHandlers *EventHandlers) *Matter {
+func NewMatter(actions *Actions, callbacks *Callbacks) *Matter {
 	stateConfigs := []esmaq.StateConfig{
 		{
-			From: esmaq.State(StateSolid),
-			Transitions: []esmaq.Transitions{
+			From:    esmaq.StateType(StateSolid),
+			Actions: actions.Solid,
+			Transitions: []esmaq.TransitionConfig{
 				{
-					Event: esmaq.Event(EventMelt),
-					To:    esmaq.State(StateLiquid),
+					Event: esmaq.EventType(EventMelt),
+					To:    esmaq.StateType(StateLiquid),
 				},
 			},
 		},
 		{
-			From: esmaq.State(StateLiquid),
-			Transitions: []esmaq.Transitions{
+			From:    esmaq.StateType(StateLiquid),
+			Actions: actions.Liquid,
+			Transitions: []esmaq.TransitionConfig{
 				{
-					Event: esmaq.Event(EventFreeze),
-					To:    esmaq.State(StateSolid),
+					Event: esmaq.EventType(EventFreeze),
+					To:    esmaq.StateType(StateSolid),
 				},
 				{
-					Event: esmaq.Event(EventVaporize),
-					To:    esmaq.State(StateGas),
+					Event: esmaq.EventType(EventVaporize),
+					To:    esmaq.StateType(StateGas),
 				},
 			},
 		},
 		{
-			From: esmaq.State(StateGas),
-			Transitions: []esmaq.Transitions{
+			From:    esmaq.StateType(StateGas),
+			Actions: actions.Gas,
+			Transitions: []esmaq.TransitionConfig{
 				{
-					Event: esmaq.Event(EventCondense),
-					To:    esmaq.State(StateLiquid),
+					Event: esmaq.EventType(EventCondense),
+					To:    esmaq.StateType(StateLiquid),
 				},
 			},
 		},
 	}
 
 	matter := &Matter{
-		core:          esmaq.NewCore(stateConfigs),
-		eventHandlers: eventHandlers,
+		core:      esmaq.NewCore(stateConfigs),
+		callbacks: callbacks,
 	}
 
 	return matter

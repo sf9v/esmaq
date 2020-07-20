@@ -1,39 +1,45 @@
 package esmaq
 
-import (
-	"github.com/stevenferrer/esmaq/internal"
-)
+type State struct {
+	Transitions map[EventType]*Transition
 
-// Core is a state machin core
-type Core struct {
-	stateMap map[State]*internal.State
+	Actions *Actions
 }
 
-// CanTransition will return an error if transition is not allowed
-func (c *Core) CanTransition(e Event, from State) error {
-	// get from state
-	fs, err := c.getState(from)
+type Transition struct {
+	To StateType
+}
+
+// Core is a state machine core
+type Core struct {
+	states map[StateType]*State
+}
+
+// Transition will return an error if transition is not allowed
+func (c *Core) Transition(event EventType, from StateType) (*State, error) {
+	// get "from" state
+	fromState, err := c.GetState(from)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// verify event is allowed
-	tr, ok := fs.Transitions[string(e)]
+	toTrsn, ok := fromState.Transitions[event]
 	if !ok {
-		return newUndefinedEventError(e, from)
+		return nil, newUndefinedEventError(event, from)
 	}
 
-	// get to state
-	_, err = c.getState(State(tr.To))
+	// get "to" state
+	toState, err := c.GetState(toTrsn.To)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return toState, nil
 }
 
-func (c *Core) getState(s State) (*internal.State, error) {
-	st, ok := c.stateMap[s]
+func (c *Core) GetState(s StateType) (*State, error) {
+	st, ok := c.states[s]
 	if !ok {
 		return nil, newUndefinedStateError(s)
 	}
@@ -42,28 +48,30 @@ func (c *Core) getState(s State) (*internal.State, error) {
 }
 
 // NewCore is a factory for state machine core
-func NewCore(stCfgs []StateConfig) *Core {
-	stMap := map[State]*internal.State{}
-
-	for _, stCfg := range stCfgs {
-		_, ok := stMap[stCfg.From]
+func NewCore(stateConfigs []StateConfig) *Core {
+	states := map[StateType]*State{}
+	for _, stateConfig := range stateConfigs {
+		_, ok := states[stateConfig.From]
 		if ok {
 			continue
 		}
 
-		trs := map[string]*internal.Transition{}
-		for _, tr := range stCfg.Transitions {
-			event := string(tr.Event)
-			_, ok = trs[event]
+		trsns := map[EventType]*Transition{}
+		for _, trsn := range stateConfig.Transitions {
+			event := trsn.Event
+			_, ok = trsns[event]
 			if ok {
 				continue
 			}
 
-			trs[event] = &internal.Transition{To: string(tr.To)}
+			trsns[event] = &Transition{To: trsn.To}
 		}
 
-		stMap[stCfg.From] = &internal.State{Transitions: trs}
+		states[stateConfig.From] = &State{
+			Transitions: trsns,
+			Actions:     stateConfig.Actions,
+		}
 	}
 
-	return &Core{stateMap: stMap}
+	return &Core{states: states}
 }

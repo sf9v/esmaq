@@ -1,57 +1,76 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/stevenferrer/esmaq"
+	"github.com/stevenferrer/esmaq/gen"
+
+	"github.com/stevenferrer/esmaq/example/internal/myswitch"
 )
 
 func main() {
-	// switchExample()
 	generateSwitch()
 	generateMatter()
 }
 
 func switchExample() {
-	// eventHandlers := myswitch.EventHandlers{
-	// 	SwitchOff: &myswitch.SwitchOffEventHandlers{
-	// 		OnBefore: func(ctx context.Context) error {
-	// 			fmt.Println("")
-	// 			return nil
-	// 		},
-	// 	},
-	// }
+	mySwitch := myswitch.NewMySwitch(&myswitch.Actions{
+		Off: &esmaq.Actions{
+			OnEnter: func() {
+				fmt.Println("off: on enter")
+			},
+			OnExit: func() {
+				fmt.Println("off: on exit")
+			},
+		},
+		On: &esmaq.Actions{
+			OnEnter: func() {
+				fmt.Println("on: on enter")
+			},
+			OnExit: func() {
+				fmt.Println("on: on exit")
+			},
+		},
+	}, &myswitch.Callbacks{
+		SwitchOn: func(ctx context.Context, a int) (b string, err error) {
+			fmt.Println("switch on callback")
+			return
+		},
+		SwitchOff: func(ctx context.Context) (err error) {
+			fmt.Println("switch off callback")
+			return
+		},
+	})
 
-	// mySwitch := myswitch.NewMySwitch()
-	// ctx := context.Background()
-
-	// err := mySwitch.SwitchOn(myswitch.CtxWtFrom(ctx, myswitch.StateOff))
-	// checkErr(err)
+	ctx := context.Background()
+	_, err := mySwitch.SwitchOn(myswitch.CtxWtFrom(ctx, myswitch.StateOff), 0)
+	checkErr(err)
 }
 
 func generateSwitch() {
 	mySwitch := []esmaq.StateConfig{
 		{
 			From: "off",
-			Transitions: []esmaq.Transitions{
+			Transitions: []esmaq.TransitionConfig{
 				{
 					Event: "switchOn",
 					To:    "on",
 					Callback: esmaq.Callback{
 						Ins: esmaq.Ins{
-							"a": 1,
+							"a": 0,
 						},
-						Outs: esmaq.Outs{
-							"b": 1.0,
-						},
+						Outs: esmaq.Outs{"b": ""},
 					},
 				},
 			},
 		},
 		{
 			From: "on",
-			Transitions: []esmaq.Transitions{
+			Transitions: []esmaq.TransitionConfig{
 				{
 					Event: "switchOff",
 					To:    "off",
@@ -66,7 +85,7 @@ func generateSwitch() {
 
 	out, err := os.Create(filePath)
 	checkErr(err)
-	err = esmaq.Gen(esmaq.Schema{
+	err = gen.Gen(gen.Schema{
 		Name:   "MySwitch",
 		Pkg:    "myswitch",
 		States: mySwitch,
@@ -75,42 +94,35 @@ func generateSwitch() {
 }
 
 func matterExample() {
-	// myMatter := matter.NewMatter(&matter.Callbacks{
+	// myMatter := matter.NewMatter(&matter.Actions{
+	// 	Gas:    &esmaq.Actions{
+	// 		OnEnter: func(){
+	// 			fmt.Println("gas: on enter")
+	// 		},
+	// 	},
+	// 	Liquid: &esmaq.Actions{},
+	// 	Solid:  &esmaq.Actions{},
+	// }, &matter.Callbacks{
 	// 	Condense: func(ctx context.Context) (err error) {
-	// 		fmt.Print("condensed")
 	// 		return
 	// 	},
 	// 	Freeze: func(ctx context.Context) (err error) {
-	// 		fmt.Println("freezed")
 	// 		return
 	// 	},
 	// 	Melt: func(ctx context.Context) (err error) {
-	// 		fmt.Println("melted")
 	// 		return
 	// 	},
 	// 	Vaporize: func(ctx context.Context) (err error) {
-	// 		fmt.Println("liquid vaporized")
-	// 		next, ok := matter.ToCtx(ctx)
-	// 		if !ok {
-	// 			panic("to state not set")
-	// 		}
-
-	// 		fmt.Printf("next state is %q\n", next)
 	// 		return
 	// 	},
 	// })
-
-	// ctx := context.Background()
-
-	// err := myMatter.Vaporize(matter.CtxWtFrom(ctx, matter.StateLiquid))
-	// checkErr(err)
 }
 
 func generateMatter() {
 	statesOfMatter := []esmaq.StateConfig{
 		{
 			From: "solid",
-			Transitions: []esmaq.Transitions{
+			Transitions: []esmaq.TransitionConfig{
 				{
 					Event: "melt",
 					To:    "liquid",
@@ -119,7 +131,7 @@ func generateMatter() {
 		},
 		{
 			From: "liquid",
-			Transitions: []esmaq.Transitions{
+			Transitions: []esmaq.TransitionConfig{
 				{
 					Event: "freeze",
 					To:    "solid",
@@ -132,7 +144,7 @@ func generateMatter() {
 		},
 		{
 			From: "gas",
-			Transitions: []esmaq.Transitions{
+			Transitions: []esmaq.TransitionConfig{
 				{
 					Event: "condense",
 					To:    "liquid",
@@ -148,7 +160,7 @@ func generateMatter() {
 	out, err := os.Create(filePath)
 	checkErr(err)
 
-	err = esmaq.Gen(esmaq.Schema{
+	err = gen.Gen(gen.Schema{
 		Name:   "Matter",
 		Pkg:    "matter",
 		States: statesOfMatter,
