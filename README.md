@@ -1,2 +1,2 @@
-# esmaq
-An experimental state machine generator in Go
+# Esmaq
+An experimental *state machine generator* in Go
