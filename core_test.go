@@ -1,6 +1,7 @@
 package esmaq_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,12 +14,14 @@ func TestStateMachine(t *testing.T) {
 	core := esmaq.NewCore([]esmaq.StateConfig{
 		{
 			From: "off",
-			Actions: &esmaq.Actions{
-				OnEnter: func() {
+			Actions: esmaq.Actions{
+				OnEnter: func(_ context.Context) error {
 					fmt.Println("enter: off")
+					return nil
 				},
-				OnExit: func() {
+				OnExit: func(_ context.Context) error {
 					fmt.Println("exit: off")
+					return nil
 				},
 			},
 			Transitions: []esmaq.TransitionConfig{
@@ -30,12 +33,14 @@ func TestStateMachine(t *testing.T) {
 		},
 		{
 			From: "on",
-			Actions: &esmaq.Actions{
-				OnEnter: func() {
+			Actions: esmaq.Actions{
+				OnEnter: func(_ context.Context) error {
 					fmt.Println("enter: on")
+					return nil
 				},
-				OnExit: func() {
+				OnExit: func(_ context.Context) error {
 					fmt.Println("exit: on")
+					return nil
 				},
 			},
 			Transitions: []esmaq.TransitionConfig{

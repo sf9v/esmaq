@@ -39,8 +39,8 @@ type Callbacks struct {
 }
 
 type Actions struct {
-	Off *esmaq.Actions
-	On  *esmaq.Actions
+	Off esmaq.Actions
+	On  esmaq.Actions
 }
 
 func (sm *MySwitch) SwitchOn(ctx context.Context, a int) (b string, err error) {
@@ -62,14 +62,27 @@ func (sm *MySwitch) SwitchOn(ctx context.Context, a int) (b string, err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateOn)
 
-	fromState.Actions.OnExit()
-
-	b, err = sm.callbacks.SwitchOn(ctx, a)
-	if err != nil {
-		return "", err
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return "", err
+		}
 	}
 
-	toState.Actions.OnEnter()
+	if sm.callbacks != nil {
+		b, err = sm.callbacks.SwitchOn(ctx, a)
+		if err != nil {
+			return "", err
+		}
+
+	}
+
+	if toState.Actions.OnEnter != nil {
+		err = toState.Actions.OnEnter(ctx)
+		if err != nil {
+			return "", err
+		}
+	}
 
 	return b, nil
 }
@@ -93,14 +106,27 @@ func (sm *MySwitch) SwitchOff(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateOff)
 
-	fromState.Actions.OnExit()
-
-	err = sm.callbacks.SwitchOff(ctx)
-	if err != nil {
-		return err
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
-	toState.Actions.OnEnter()
+	if sm.callbacks != nil {
+		err = sm.callbacks.SwitchOff(ctx)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	if toState.Actions.OnEnter != nil {
+		err = toState.Actions.OnEnter(ctx)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

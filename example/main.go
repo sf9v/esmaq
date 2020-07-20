@@ -2,39 +2,30 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/stevenferrer/esmaq"
-	"github.com/stevenferrer/esmaq/gen"
-
 	"github.com/stevenferrer/esmaq/example/internal/myswitch"
+	"github.com/stevenferrer/esmaq/gen"
 )
 
 func main() {
-	generateSwitch()
+	// generateSwitch()
 	generateMatter()
+	// switchExample()
 }
 
 func switchExample() {
 	mySwitch := myswitch.NewMySwitch(&myswitch.Actions{
-		Off: &esmaq.Actions{
-			OnEnter: func() {
-				fmt.Println("off: on enter")
-			},
-			OnExit: func() {
-				fmt.Println("off: on exit")
+		Off: esmaq.Actions{
+			OnEnter: func(_ context.Context) error {
+				return errors.New("off: on enter: something bad happened")
 			},
 		},
-		On: &esmaq.Actions{
-			OnEnter: func() {
-				fmt.Println("on: on enter")
-			},
-			OnExit: func() {
-				fmt.Println("on: on exit")
-			},
-		},
+		On: esmaq.Actions{},
 	}, &myswitch.Callbacks{
 		SwitchOn: func(ctx context.Context, a int) (b string, err error) {
 			fmt.Println("switch on callback")
@@ -48,6 +39,9 @@ func switchExample() {
 
 	ctx := context.Background()
 	_, err := mySwitch.SwitchOn(myswitch.CtxWtFrom(ctx, myswitch.StateOff), 0)
+	checkErr(err)
+
+	err = mySwitch.SwitchOff(myswitch.CtxWtFrom(ctx, myswitch.StateOn))
 	checkErr(err)
 }
 

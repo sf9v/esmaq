@@ -44,9 +44,9 @@ type Callbacks struct {
 }
 
 type Actions struct {
-	Solid  *esmaq.Actions
-	Liquid *esmaq.Actions
-	Gas    *esmaq.Actions
+	Solid  esmaq.Actions
+	Liquid esmaq.Actions
+	Gas    esmaq.Actions
 }
 
 func (sm *Matter) Melt(ctx context.Context) (err error) {
@@ -68,14 +68,27 @@ func (sm *Matter) Melt(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateLiquid)
 
-	fromState.Actions.OnExit()
-
-	err = sm.callbacks.Melt(ctx)
-	if err != nil {
-		return err
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
-	toState.Actions.OnEnter()
+	if sm.callbacks != nil {
+		err = sm.callbacks.Melt(ctx)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	if toState.Actions.OnEnter != nil {
+		err = toState.Actions.OnEnter(ctx)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -99,14 +112,27 @@ func (sm *Matter) Freeze(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateSolid)
 
-	fromState.Actions.OnExit()
-
-	err = sm.callbacks.Freeze(ctx)
-	if err != nil {
-		return err
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
-	toState.Actions.OnEnter()
+	if sm.callbacks != nil {
+		err = sm.callbacks.Freeze(ctx)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	if toState.Actions.OnEnter != nil {
+		err = toState.Actions.OnEnter(ctx)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -130,14 +156,27 @@ func (sm *Matter) Vaporize(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateGas)
 
-	fromState.Actions.OnExit()
-
-	err = sm.callbacks.Vaporize(ctx)
-	if err != nil {
-		return err
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
-	toState.Actions.OnEnter()
+	if sm.callbacks != nil {
+		err = sm.callbacks.Vaporize(ctx)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	if toState.Actions.OnEnter != nil {
+		err = toState.Actions.OnEnter(ctx)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -161,14 +200,27 @@ func (sm *Matter) Condense(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateLiquid)
 
-	fromState.Actions.OnExit()
-
-	err = sm.callbacks.Condense(ctx)
-	if err != nil {
-		return err
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
-	toState.Actions.OnEnter()
+	if sm.callbacks != nil {
+		err = sm.callbacks.Condense(ctx)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	if toState.Actions.OnEnter != nil {
+		err = toState.Actions.OnEnter(ctx)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

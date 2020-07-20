@@ -1,5 +1,7 @@
 package esmaq
 
+import "context"
+
 type (
 	// StateType is a state type
 	StateType string
@@ -10,13 +12,13 @@ type (
 // StateConfig is a state config
 type StateConfig struct {
 	From        StateType
-	Actions     *Actions
+	Actions     Actions
 	Transitions []TransitionConfig
 }
 
 type Actions struct {
-	OnEnter func()
-	OnExit  func()
+	OnEnter func(context.Context) error
+	OnExit  func(context.Context) error
 }
 
 // Transitions is a transition config

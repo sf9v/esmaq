@@ -181,26 +181,58 @@ func Gen(cfg Schema, out io.Writer) error {
 						jen.Id(toState),
 					).Line()
 
-					g.Id("fromState").
+					// var actions =[]string{"On"}
+
+					g.If(jen.Id("fromState").
 						Dot("Actions").
 						Dot("OnExit").
-						Call().Line()
-
-					g.List(outIDs...).Op("=").
-						Id(rcvr).
-						Dot("callbacks").
-						Dot(cbName).
-						Call(inIDs...)
-					g.If(jen.Err().Op("!=").Nil()).
+						Op("!=").Nil()).
 						BlockFunc(func(g *jen.Group) {
-							rets := append(errRets, jen.Id("err"))
-							g.Return(rets...)
-						}).Line()
+							g.Err().Op("=").Id("fromState").
+								Dot("Actions").
+								Dot("OnExit").
+								Call(jen.Id("ctx"))
+							g.If(jen.Err().Op("!=").Nil()).
+								BlockFunc(func(g *jen.Group) {
+									rets := append(errRets, jen.Id("err"))
+									g.Return(rets...)
+								})
+						}).
+						Line()
 
-					g.Id("toState").
+					g.If(jen.Id(rcvr).
+						Dot("callbacks").
+						Op("!=").Nil()).
+						BlockFunc(func(g *jen.Group) {
+							g.List(outIDs...).Op("=").
+								Id(rcvr).
+								Dot("callbacks").
+								Dot(cbName).
+								Call(inIDs...)
+							g.If(jen.Err().Op("!=").Nil()).
+								BlockFunc(func(g *jen.Group) {
+									rets := append(errRets, jen.Id("err"))
+									g.Return(rets...)
+								}).Line()
+						}).
+						Line()
+
+					g.If(jen.Id("toState").
 						Dot("Actions").
 						Dot("OnEnter").
-						Call().Line()
+						Op("!=").Nil()).
+						BlockFunc(func(g *jen.Group) {
+							g.Err().Op("=").Id("toState").
+								Dot("Actions").
+								Dot("OnEnter").
+								Call(jen.Id("ctx"))
+							g.If(jen.Err().Op("!=").Nil()).
+								BlockFunc(func(g *jen.Group) {
+									rets := append(errRets, jen.Id("err"))
+									g.Return(rets...)
+								})
+						}).
+						Line()
 
 					g.Return(okRets...)
 				}))
@@ -226,7 +258,7 @@ func Gen(cfg Schema, out io.Writer) error {
 	f.Type().Id("Callbacks").Struct(cbcArgs...).Line()
 	f.Type().Id("Actions").StructFunc(func(g *jen.Group) {
 		for _, stateCfg := range cfg.States {
-			g.Id(toCam(string(stateCfg.From))).Op("*").Qual(pkgPath, "Actions")
+			g.Id(toCam(string(stateCfg.From))).Qual(pkgPath, "Actions")
 		}
 	})
 

@@ -3,7 +3,7 @@ package esmaq
 type State struct {
 	Transitions map[EventType]*Transition
 
-	Actions *Actions
+	Actions Actions
 }
 
 type Transition struct {
