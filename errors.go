@@ -22,7 +22,7 @@ type UndefinedEventError struct {
 }
 
 func (e *UndefinedEventError) Error() string {
-	return fmt.Sprintf("event %q not defined for %q state", e.e, e.s)
+	return fmt.Sprintf("transition event %q not allowed in %q state", e.e, e.s)
 }
 
 func newUndefinedEventError(e EventType, s StateType) *UndefinedEventError {
