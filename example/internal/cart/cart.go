@@ -11,6 +11,7 @@ type State = esmaq.StateType
 
 const (
 	StateSubmitted  State = "submitted"
+	StateCancelled  State = "cancelled"
 	StateShopping   State = "shopping"
 	StateFinalizing State = "finalizing"
 	StatePaid       State = "paid"
@@ -21,7 +22,9 @@ type Event = esmaq.EventType
 const (
 	EventCheckout Event = "checkout"
 	EventPay      Event = "pay"
+	EventModify   Event = "modify"
 	EventSubmit   Event = "submit"
+	EventCancel   Event = "cancel"
 )
 
 type ctxKey int
@@ -39,7 +42,9 @@ type Cart struct {
 type Callbacks struct {
 	Checkout func(ctx context.Context, cartID int64) (err error)
 	Pay      func(ctx context.Context, cartID int64, paymentId int64) (err error)
+	Modify   func(ctx context.Context) (err error)
 	Submit   func(ctx context.Context, cartID int64) (orderId int64, err error)
+	Cancel   func(ctx context.Context, cartID int64) (cancelID int64, err error)
 }
 
 type Actions struct {
@@ -47,6 +52,7 @@ type Actions struct {
 	Finalizing esmaq.Actions
 	Paid       esmaq.Actions
 	Submitted  esmaq.Actions
+	Cancelled  esmaq.Actions
 }
 
 func (sm *Cart) Checkout(ctx context.Context, cartID int64) (err error) {
@@ -137,6 +143,50 @@ func (sm *Cart) Pay(ctx context.Context, cartID int64, paymentId int64) (err err
 	return nil
 }
 
+func (sm *Cart) Modify(ctx context.Context) (err error) {
+	from, ok := fromCtx(ctx)
+	if !ok {
+		return errors.New("\"from\" state not set in context")
+	}
+
+	fromState, err := sm.core.GetState(from)
+	if err != nil {
+		return err
+	}
+
+	toState, err := sm.core.Transition(EventModify, from)
+	if err != nil {
+		return err
+	}
+
+	// inject "to" in context
+	ctx = ctxWtTo(ctx, StateShopping)
+
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	if sm.callbacks != nil && sm.callbacks.Modify != nil {
+		err = sm.callbacks.Modify(ctx)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	if toState.Actions.OnEnter != nil {
+		err = toState.Actions.OnEnter(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (sm *Cart) Submit(ctx context.Context, cartID int64) (orderId int64, err error) {
 	from, ok := fromCtx(ctx)
 	if !ok {
@@ -181,6 +231,50 @@ func (sm *Cart) Submit(ctx context.Context, cartID int64) (orderId int64, err er
 	return orderId, nil
 }
 
+func (sm *Cart) Cancel(ctx context.Context, cartID int64) (cancelID int64, err error) {
+	from, ok := fromCtx(ctx)
+	if !ok {
+		return 0, errors.New("\"from\" state not set in context")
+	}
+
+	fromState, err := sm.core.GetState(from)
+	if err != nil {
+		return 0, err
+	}
+
+	toState, err := sm.core.Transition(EventCancel, from)
+	if err != nil {
+		return 0, err
+	}
+
+	// inject "to" in context
+	ctx = ctxWtTo(ctx, StateCancelled)
+
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	if sm.callbacks != nil && sm.callbacks.Cancel != nil {
+		cancelID, err = sm.callbacks.Cancel(ctx, cartID)
+		if err != nil {
+			return 0, err
+		}
+
+	}
+
+	if toState.Actions.OnEnter != nil {
+		err = toState.Actions.OnEnter(ctx)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	return cancelID, nil
+}
+
 func CtxWtFrom(ctx context.Context, from State) context.Context {
 	return context.WithValue(ctx, fromKey, from)
 }
@@ -219,6 +313,10 @@ func NewCart(actions *Actions, callbacks *Callbacks) *Cart {
 					Event: EventPay,
 					To:    StatePaid,
 				},
+				{
+					Event: EventModify,
+					To:    StateShopping,
+				},
 			},
 		},
 		{
@@ -229,12 +327,11 @@ func NewCart(actions *Actions, callbacks *Callbacks) *Cart {
 					Event: EventSubmit,
 					To:    StateSubmitted,
 				},
+				{
+					Event: EventCancel,
+					To:    StateCancelled,
+				},
 			},
-		},
-		{
-			From:        StateSubmitted,
-			Actions:     actions.Submitted,
-			Transitions: []esmaq.TransitionConfig{},
 		},
 	}
 

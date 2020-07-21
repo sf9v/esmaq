@@ -10,8 +10,8 @@ import (
 type State = esmaq.StateType
 
 const (
-	StateOff State = "off"
 	StateOn  State = "on"
+	StateOff State = "off"
 )
 
 type Event = esmaq.EventType

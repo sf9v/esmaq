@@ -13,7 +13,7 @@ type Transition struct {
 
 // Core is a state machine core
 type Core struct {
-	states map[StateType]*State
+	stateMap map[StateType]*State
 }
 
 // Transition will return an error if transition is not allowed
@@ -40,7 +40,7 @@ func (c *Core) Transition(event EventType, from StateType) (*State, error) {
 }
 
 func (c *Core) GetState(s StateType) (*State, error) {
-	st, ok := c.states[s]
+	st, ok := c.stateMap[s]
 	if !ok {
 		return nil, newUndefinedStateError(s)
 	}
@@ -50,29 +50,42 @@ func (c *Core) GetState(s StateType) (*State, error) {
 
 // NewCore is a factory for state machine core
 func NewCore(stateConfigs []StateConfig) *Core {
-	states := map[StateType]*State{}
+	stateMap := map[StateType]*State{}
+
+	// all possible states
+	states := map[StateType]bool{}
+
 	for _, stateConfig := range stateConfigs {
-		_, ok := states[stateConfig.From]
-		if ok {
+		if _, ok := stateMap[stateConfig.From]; ok {
 			continue
 		}
 
 		trsns := map[EventType]*Transition{}
 		for _, trsn := range stateConfig.Transitions {
 			event := trsn.Event
-			_, ok = trsns[event]
-			if ok {
+			if _, ok := trsns[event]; ok {
 				continue
 			}
 
 			trsns[event] = &Transition{To: trsn.To}
+
+			if _, ok := states[trsn.To]; !ok {
+				states[trsn.To] = true
+			}
 		}
 
-		states[stateConfig.From] = &State{
+		stateMap[stateConfig.From] = &State{
 			Transitions: trsns,
 			Actions:     stateConfig.Actions,
 		}
 	}
 
-	return &Core{states: states}
+	// make sure all states are defined
+	for state := range states {
+		if _, ok := stateMap[state]; !ok {
+			stateMap[state] = &State{}
+		}
+	}
+
+	return &Core{stateMap: stateMap}
 }

@@ -10,9 +10,9 @@ import (
 type State = esmaq.StateType
 
 const (
-	StateSolid  State = "solid"
 	StateLiquid State = "liquid"
 	StateGas    State = "gas"
+	StateSolid  State = "solid"
 )
 
 type Event = esmaq.EventType

@@ -15,12 +15,15 @@ import "log"
 // - integrate with go generate
 // - also, don't forget to add test
 // - use type aliasing for type State so we don't need to type cast - OK
+// - consider adding a get current state function so we don't need to always include
+// 	the from state in the context, but make it optional
+// - generating graphs
 
 func main() {
-	generateSwitch()
-	generateMatter()
-	generateCart()
-	// cartExample()
+	// generateSwitch()
+	// generateMatter()
+	// generateCart()
+	cartExample()
 }
 
 func checkErr(err error) {

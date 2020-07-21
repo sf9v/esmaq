@@ -34,7 +34,7 @@ type Transition struct {
 	Callback Callback
 }
 
-// Callback is the callback function config
+// Callback is a callback function signature
 type Callback struct {
 	Ins  Ins
 	Outs Outs
