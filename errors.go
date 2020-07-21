@@ -15,16 +15,17 @@ func newUndefinedStateError(state StateType) *UndefinedStateError {
 	return &UndefinedStateError{state: state}
 }
 
-// UndefinedEventError is an error when an event is not defined
-type UndefinedEventError struct {
+// TransitionNotAllowedError is an error when a transition is not allowed
+type TransitionNotAllowedError struct {
 	event EventType
 	from  StateType
 }
 
-func (e *UndefinedEventError) Error() string {
-	return fmt.Sprintf("transition event %q is not allowed in %q state", e.event, e.from)
+func (e *TransitionNotAllowedError) Error() string {
+	return fmt.Sprintf("transition %q is not allowed in %q state",
+		e.event, e.from)
 }
 
-func newUndefinedEventError(event EventType, from StateType) *UndefinedEventError {
-	return &UndefinedEventError{event: event, from: from}
+func newUndefinedEventError(event EventType, from StateType) *TransitionNotAllowedError {
+	return &TransitionNotAllowedError{event: event, from: from}
 }

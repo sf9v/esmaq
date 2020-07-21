@@ -1,17 +1,16 @@
-package esmaq_test
+package esmaq
 
 import (
 	"testing"
 
-	"github.com/stevenferrer/esmaq"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCore(t *testing.T) {
-	core := esmaq.NewCore([]esmaq.StateConfig{
+	core := NewCore([]StateConfig{
 		{
 			From: "a",
-			Transitions: []esmaq.TransitionConfig{
+			Transitions: []TransitionConfig{
 				{
 					Event: "to_b",
 					To:    "b",
@@ -25,7 +24,7 @@ func TestCore(t *testing.T) {
 		},
 		{
 			From: "b",
-			Transitions: []esmaq.TransitionConfig{
+			Transitions: []TransitionConfig{
 				{
 					To:    "c",
 					Event: "to_c",
@@ -68,14 +67,17 @@ func TestCore(t *testing.T) {
 	// invalid transitions
 	_, err = core.Transition("a", "to_c")
 	assert.Error(t, err)
+	assert.Equal(t, `transition "to_c" is not allowed in "a" state`, err.Error())
 
 	_, err = core.Transition("c", "to_a")
 	assert.Error(t, err)
 
-	// invalid states
 	_, err = core.Transition("a", "to_d")
 	assert.Error(t, err)
+	assert.Equal(t, `transition "to_d" is not allowed in "a" state`, err.Error())
 
+	// invalid state error
 	_, err = core.Transition("d", "to_e")
 	assert.Error(t, err)
+	assert.Equal(t, `state "d" is not defined`, err.Error())
 }
