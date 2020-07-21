@@ -44,9 +44,9 @@ type Callbacks struct {
 }
 
 type Actions struct {
-	Solid  esmaq.Actions
 	Liquid esmaq.Actions
 	Gas    esmaq.Actions
+	Solid  esmaq.Actions
 }
 
 func (sm *Matter) Melt(ctx context.Context) (err error) {
@@ -60,7 +60,7 @@ func (sm *Matter) Melt(ctx context.Context) (err error) {
 		return err
 	}
 
-	toState, err := sm.core.Transition(EventMelt, from)
+	toState, err := sm.core.Transition(from, EventMelt)
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (sm *Matter) Freeze(ctx context.Context) (err error) {
 		return err
 	}
 
-	toState, err := sm.core.Transition(EventFreeze, from)
+	toState, err := sm.core.Transition(from, EventFreeze)
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func (sm *Matter) Vaporize(ctx context.Context) (err error) {
 		return err
 	}
 
-	toState, err := sm.core.Transition(EventVaporize, from)
+	toState, err := sm.core.Transition(from, EventVaporize)
 	if err != nil {
 		return err
 	}
@@ -192,7 +192,7 @@ func (sm *Matter) Condense(ctx context.Context) (err error) {
 		return err
 	}
 
-	toState, err := sm.core.Transition(EventCondense, from)
+	toState, err := sm.core.Transition(from, EventCondense)
 	if err != nil {
 		return err
 	}

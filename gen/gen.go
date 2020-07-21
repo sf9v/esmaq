@@ -178,7 +178,7 @@ func Gen(schema Schema, out io.Writer) error {
 						Op(":=").Id(rcvr).
 						Dot("core").
 						Dot("Transition").
-						Call(jen.Id(toCam("event_"+string(trsn.Event))), jen.Id("from"))
+						Call(jen.Id("from"), jen.Id(toCam("event_"+string(trsn.Event))))
 					g.If(jen.Err().Op("!=").Nil()).
 						BlockFunc(func(g *jen.Group) {
 							rets := append(errRets, jen.Id("err"))

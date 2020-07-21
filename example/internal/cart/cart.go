@@ -10,11 +10,11 @@ import (
 type State = esmaq.StateType
 
 const (
+	StatePaid       State = "paid"
 	StateSubmitted  State = "submitted"
 	StateCancelled  State = "cancelled"
 	StateShopping   State = "shopping"
 	StateFinalizing State = "finalizing"
-	StatePaid       State = "paid"
 )
 
 type Event = esmaq.EventType
@@ -48,11 +48,11 @@ type Callbacks struct {
 }
 
 type Actions struct {
+	Shopping   esmaq.Actions
 	Finalizing esmaq.Actions
 	Paid       esmaq.Actions
 	Submitted  esmaq.Actions
 	Cancelled  esmaq.Actions
-	Shopping   esmaq.Actions
 }
 
 func (sm *Cart) Checkout(ctx context.Context, cartID int64) (err error) {
@@ -66,7 +66,7 @@ func (sm *Cart) Checkout(ctx context.Context, cartID int64) (err error) {
 		return err
 	}
 
-	toState, err := sm.core.Transition(EventCheckout, from)
+	toState, err := sm.core.Transition(from, EventCheckout)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func (sm *Cart) Pay(ctx context.Context, cartID int64, paymentId int64) (err err
 		return err
 	}
 
-	toState, err := sm.core.Transition(EventPay, from)
+	toState, err := sm.core.Transition(from, EventPay)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (sm *Cart) Modify(ctx context.Context) (err error) {
 		return err
 	}
 
-	toState, err := sm.core.Transition(EventModify, from)
+	toState, err := sm.core.Transition(from, EventModify)
 	if err != nil {
 		return err
 	}
@@ -198,7 +198,7 @@ func (sm *Cart) Submit(ctx context.Context, cartID int64) (orderId int64, err er
 		return 0, err
 	}
 
-	toState, err := sm.core.Transition(EventSubmit, from)
+	toState, err := sm.core.Transition(from, EventSubmit)
 	if err != nil {
 		return 0, err
 	}
@@ -242,7 +242,7 @@ func (sm *Cart) Cancel(ctx context.Context, cartID int64) (cancelID int64, err e
 		return 0, err
 	}
 
-	toState, err := sm.core.Transition(EventCancel, from)
+	toState, err := sm.core.Transition(from, EventCancel)
 	if err != nil {
 		return 0, err
 	}

@@ -2,6 +2,7 @@ package esmaq
 
 // State is a state
 type State struct {
+	State       StateType
 	Transitions map[EventType]*Transition
 	Actions     Actions
 }
@@ -17,7 +18,7 @@ type Core struct {
 }
 
 // Transition will return an error if transition is not allowed
-func (c *Core) Transition(event EventType, from StateType) (*State, error) {
+func (c *Core) Transition(from StateType, event EventType) (*State, error) {
 	// get "from" state
 	fromState, err := c.GetState(from)
 	if err != nil {
@@ -55,35 +56,36 @@ func NewCore(stateConfigs []StateConfig) *Core {
 	// all possible states
 	states := map[StateType]bool{}
 
-	for _, stateConfig := range stateConfigs {
-		if _, ok := stateMap[stateConfig.From]; ok {
+	for _, sc := range stateConfigs {
+		if _, ok := stateMap[sc.From]; ok {
 			continue
 		}
 
-		trsns := map[EventType]*Transition{}
-		for _, trsn := range stateConfig.Transitions {
-			event := trsn.Event
-			if _, ok := trsns[event]; ok {
+		trs := map[EventType]*Transition{}
+		for _, tr := range sc.Transitions {
+			event := tr.Event
+			if _, ok := trs[event]; ok {
 				continue
 			}
 
-			trsns[event] = &Transition{To: trsn.To}
+			trs[event] = &Transition{To: tr.To}
 
-			if _, ok := states[trsn.To]; !ok {
-				states[trsn.To] = true
+			if _, ok := states[tr.To]; !ok {
+				states[tr.To] = true
 			}
 		}
 
-		stateMap[stateConfig.From] = &State{
-			Transitions: trsns,
-			Actions:     stateConfig.Actions,
+		stateMap[sc.From] = &State{
+			State:       sc.From,
+			Transitions: trs,
+			Actions:     sc.Actions,
 		}
 	}
 
 	// make sure all states are defined
 	for state := range states {
 		if _, ok := stateMap[state]; !ok {
-			stateMap[state] = &State{}
+			stateMap[state] = &State{State: state}
 		}
 	}
 

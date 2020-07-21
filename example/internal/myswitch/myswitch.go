@@ -10,8 +10,8 @@ import (
 type State = esmaq.StateType
 
 const (
-	StateOn  State = "on"
 	StateOff State = "off"
+	StateOn  State = "on"
 )
 
 type Event = esmaq.EventType
@@ -54,7 +54,7 @@ func (sm *MySwitch) SwitchOn(ctx context.Context, a int) (b string, err error) {
 		return "", err
 	}
 
-	toState, err := sm.core.Transition(EventSwitchOn, from)
+	toState, err := sm.core.Transition(from, EventSwitchOn)
 	if err != nil {
 		return "", err
 	}
@@ -98,7 +98,7 @@ func (sm *MySwitch) SwitchOff(ctx context.Context) (err error) {
 		return err
 	}
 
-	toState, err := sm.core.Transition(EventSwitchOff, from)
+	toState, err := sm.core.Transition(from, EventSwitchOff)
 	if err != nil {
 		return err
 	}

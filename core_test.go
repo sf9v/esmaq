@@ -1,58 +1,81 @@
 package esmaq_test
 
 import (
-	"context"
-	"fmt"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stevenferrer/esmaq"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStateMachine(t *testing.T) {
+func TestCore(t *testing.T) {
 	core := esmaq.NewCore([]esmaq.StateConfig{
 		{
-			From: "off",
-			Actions: esmaq.Actions{
-				OnEnter: func(_ context.Context) error {
-					fmt.Println("enter: off")
-					return nil
-				},
-				OnExit: func(_ context.Context) error {
-					fmt.Println("exit: off")
-					return nil
-				},
-			},
+			From: "a",
 			Transitions: []esmaq.TransitionConfig{
 				{
-					Event: "switch",
-					To:    "on",
+					Event: "to_b",
+					To:    "b",
+				},
+				{
+					// transition to self
+					Event: "to_a",
+					To:    "a",
 				},
 			},
 		},
 		{
-			From: "on",
-			Actions: esmaq.Actions{
-				OnEnter: func(_ context.Context) error {
-					fmt.Println("enter: on")
-					return nil
-				},
-				OnExit: func(_ context.Context) error {
-					fmt.Println("exit: on")
-					return nil
-				},
-			},
+			From: "b",
 			Transitions: []esmaq.TransitionConfig{
 				{
-					Event: "switch",
-					To:    "off",
+					To:    "c",
+					Event: "to_c",
+				},
+				{
+					To:    "a",
+					Event: "to_a",
+				},
+				// duplicates
+				{
+					To:    "c",
+					Event: "to_c",
 				},
 			},
+		},
+		{
+			// duplicates
+			From: "b",
 		},
 	})
 
-	ts, err := core.Transition("switch", "off")
+	// valid transition
+	next, err := core.Transition("a", "to_b")
 	assert.NoError(t, err)
-	spew.Dump(ts)
+	assert.Equal(t, "b", string(next.State))
+
+	// transition to self
+	next, err = core.Transition("a", "to_a")
+	assert.NoError(t, err)
+	assert.Equal(t, "a", string(next.State))
+
+	next, err = core.Transition("b", "to_c")
+	assert.NoError(t, err)
+	assert.Equal(t, "c", string(next.State))
+
+	next, err = core.Transition("b", "to_a")
+	assert.NoError(t, err)
+	assert.Equal(t, "a", string(next.State))
+
+	// invalid transitions
+	_, err = core.Transition("a", "to_c")
+	assert.Error(t, err)
+
+	_, err = core.Transition("c", "to_a")
+	assert.Error(t, err)
+
+	// invalid states
+	_, err = core.Transition("a", "to_d")
+	assert.Error(t, err)
+
+	_, err = core.Transition("d", "to_e")
+	assert.Error(t, err)
 }
