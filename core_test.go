@@ -79,5 +79,5 @@ func TestCore(t *testing.T) {
 	// invalid state error
 	_, err = core.Transition("d", "to_e")
 	assert.Error(t, err)
-	assert.Equal(t, `state "d" is not defined`, err.Error())
+	assert.Equal(t, `state "d" is undefined`, err.Error())
 }

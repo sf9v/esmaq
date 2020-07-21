@@ -2,17 +2,17 @@ package esmaq
 
 import "fmt"
 
-// UndefinedStateError is an error when a state is not defined
-type UndefinedStateError struct {
+// StateUnefinedError is an error when a state is not defined
+type StateUnefinedError struct {
 	state StateType
 }
 
-func (e *UndefinedStateError) Error() string {
-	return fmt.Sprintf("state %q is not defined", e.state)
+func (e *StateUnefinedError) Error() string {
+	return fmt.Sprintf("state %q is undefined", e.state)
 }
 
-func newUndefinedStateError(state StateType) *UndefinedStateError {
-	return &UndefinedStateError{state: state}
+func newUndefinedStateError(state StateType) *StateUnefinedError {
+	return &StateUnefinedError{state: state}
 }
 
 // TransitionNotAllowedError is an error when a transition is not allowed
