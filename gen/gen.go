@@ -190,6 +190,19 @@ func Gen(schema Schema, out io.Writer) error {
 					g.Id("ctx").Op("=").Id("ctxWtTo").
 						Call(jen.Id("ctx"), jen.Id(toState)).Line()
 
+					g.If(jen.Id(rcvr).Dot("callbacks").Op("!=").Nil()).Op("&&").
+						Id(rcvr).Dot("callbacks").Dot(cbName).Op("!=").Nil().
+						BlockFunc(func(g *jen.Group) {
+							g.List(outIDs...).Op("=").Id(rcvr).Dot("callbacks").
+								Dot(cbName).Call(inIDs...)
+							g.If(jen.Err().Op("!=").Nil()).
+								BlockFunc(func(g *jen.Group) {
+									rets := append(errRets, jen.Id("err"))
+									g.Return(rets...)
+								}).Line()
+						}).
+						Line()
+
 					g.If(jen.Id("fromState").
 						Dot("Actions").
 						Dot("OnExit").
@@ -202,19 +215,6 @@ func Gen(schema Schema, out io.Writer) error {
 									rets := append(errRets, jen.Id("err"))
 									g.Return(rets...)
 								})
-						}).
-						Line()
-
-					g.If(jen.Id(rcvr).Dot("callbacks").Op("!=").Nil()).Op("&&").
-						Id(rcvr).Dot("callbacks").Dot(cbName).Op("!=").Nil().
-						BlockFunc(func(g *jen.Group) {
-							g.List(outIDs...).Op("=").Id(rcvr).Dot("callbacks").
-								Dot(cbName).Call(inIDs...)
-							g.If(jen.Err().Op("!=").Nil()).
-								BlockFunc(func(g *jen.Group) {
-									rets := append(errRets, jen.Id("err"))
-									g.Return(rets...)
-								}).Line()
 						}).
 						Line()
 

@@ -48,11 +48,11 @@ type Callbacks struct {
 }
 
 type Actions struct {
-	Shopping   esmaq.Actions
 	Finalizing esmaq.Actions
 	Paid       esmaq.Actions
 	Submitted  esmaq.Actions
 	Cancelled  esmaq.Actions
+	Shopping   esmaq.Actions
 }
 
 func (sm *Cart) Checkout(ctx context.Context, cartID int64) (err error) {
@@ -74,19 +74,19 @@ func (sm *Cart) Checkout(ctx context.Context, cartID int64) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateFinalizing)
 
-	if fromState.Actions.OnExit != nil {
-		err = fromState.Actions.OnExit(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
 	if sm.callbacks != nil && sm.callbacks.Checkout != nil {
 		err = sm.callbacks.Checkout(ctx, cartID)
 		if err != nil {
 			return err
 		}
 
+	}
+
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	if toState.Actions.OnEnter != nil {
@@ -118,19 +118,19 @@ func (sm *Cart) Pay(ctx context.Context, cartID int64, paymentId int64) (err err
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StatePaid)
 
-	if fromState.Actions.OnExit != nil {
-		err = fromState.Actions.OnExit(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
 	if sm.callbacks != nil && sm.callbacks.Pay != nil {
 		err = sm.callbacks.Pay(ctx, cartID, paymentId)
 		if err != nil {
 			return err
 		}
 
+	}
+
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	if toState.Actions.OnEnter != nil {
@@ -162,19 +162,19 @@ func (sm *Cart) Modify(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateShopping)
 
-	if fromState.Actions.OnExit != nil {
-		err = fromState.Actions.OnExit(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
 	if sm.callbacks != nil && sm.callbacks.Modify != nil {
 		err = sm.callbacks.Modify(ctx)
 		if err != nil {
 			return err
 		}
 
+	}
+
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	if toState.Actions.OnEnter != nil {
@@ -206,19 +206,19 @@ func (sm *Cart) Submit(ctx context.Context, cartID int64) (orderId int64, err er
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateSubmitted)
 
-	if fromState.Actions.OnExit != nil {
-		err = fromState.Actions.OnExit(ctx)
-		if err != nil {
-			return 0, err
-		}
-	}
-
 	if sm.callbacks != nil && sm.callbacks.Submit != nil {
 		orderId, err = sm.callbacks.Submit(ctx, cartID)
 		if err != nil {
 			return 0, err
 		}
 
+	}
+
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	if toState.Actions.OnEnter != nil {
@@ -250,19 +250,19 @@ func (sm *Cart) Cancel(ctx context.Context, cartID int64) (cancelID int64, err e
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateCancelled)
 
-	if fromState.Actions.OnExit != nil {
-		err = fromState.Actions.OnExit(ctx)
-		if err != nil {
-			return 0, err
-		}
-	}
-
 	if sm.callbacks != nil && sm.callbacks.Cancel != nil {
 		cancelID, err = sm.callbacks.Cancel(ctx, cartID)
 		if err != nil {
 			return 0, err
 		}
 
+	}
+
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	if toState.Actions.OnEnter != nil {

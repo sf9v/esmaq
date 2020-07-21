@@ -10,9 +10,9 @@ import (
 type State = esmaq.StateType
 
 const (
+	StateSolid  State = "solid"
 	StateLiquid State = "liquid"
 	StateGas    State = "gas"
-	StateSolid  State = "solid"
 )
 
 type Event = esmaq.EventType
@@ -68,19 +68,19 @@ func (sm *Matter) Melt(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateLiquid)
 
-	if fromState.Actions.OnExit != nil {
-		err = fromState.Actions.OnExit(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
 	if sm.callbacks != nil && sm.callbacks.Melt != nil {
 		err = sm.callbacks.Melt(ctx)
 		if err != nil {
 			return err
 		}
 
+	}
+
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	if toState.Actions.OnEnter != nil {
@@ -112,19 +112,19 @@ func (sm *Matter) Freeze(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateSolid)
 
-	if fromState.Actions.OnExit != nil {
-		err = fromState.Actions.OnExit(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
 	if sm.callbacks != nil && sm.callbacks.Freeze != nil {
 		err = sm.callbacks.Freeze(ctx)
 		if err != nil {
 			return err
 		}
 
+	}
+
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	if toState.Actions.OnEnter != nil {
@@ -156,19 +156,19 @@ func (sm *Matter) Vaporize(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateGas)
 
-	if fromState.Actions.OnExit != nil {
-		err = fromState.Actions.OnExit(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
 	if sm.callbacks != nil && sm.callbacks.Vaporize != nil {
 		err = sm.callbacks.Vaporize(ctx)
 		if err != nil {
 			return err
 		}
 
+	}
+
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	if toState.Actions.OnEnter != nil {
@@ -200,19 +200,19 @@ func (sm *Matter) Condense(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateLiquid)
 
-	if fromState.Actions.OnExit != nil {
-		err = fromState.Actions.OnExit(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
 	if sm.callbacks != nil && sm.callbacks.Condense != nil {
 		err = sm.callbacks.Condense(ctx)
 		if err != nil {
 			return err
 		}
 
+	}
+
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	if toState.Actions.OnEnter != nil {

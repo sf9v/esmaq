@@ -62,19 +62,19 @@ func (sm *MySwitch) SwitchOn(ctx context.Context, a int) (b string, err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateOn)
 
-	if fromState.Actions.OnExit != nil {
-		err = fromState.Actions.OnExit(ctx)
-		if err != nil {
-			return "", err
-		}
-	}
-
 	if sm.callbacks != nil && sm.callbacks.SwitchOn != nil {
 		b, err = sm.callbacks.SwitchOn(ctx, a)
 		if err != nil {
 			return "", err
 		}
 
+	}
+
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	if toState.Actions.OnEnter != nil {
@@ -106,19 +106,19 @@ func (sm *MySwitch) SwitchOff(ctx context.Context) (err error) {
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateOff)
 
-	if fromState.Actions.OnExit != nil {
-		err = fromState.Actions.OnExit(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
 	if sm.callbacks != nil && sm.callbacks.SwitchOff != nil {
 		err = sm.callbacks.SwitchOff(ctx)
 		if err != nil {
 			return err
 		}
 
+	}
+
+	if fromState.Actions.OnExit != nil {
+		err = fromState.Actions.OnExit(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	if toState.Actions.OnEnter != nil {

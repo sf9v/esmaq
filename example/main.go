@@ -20,10 +20,10 @@ import "log"
 // - generating graphs
 
 func main() {
-	// generateSwitch()
-	// generateMatter()
-	// generateCart()
-	cartExample()
+	generateSwitch()
+	generateMatter()
+	generateCart()
+	// cartExample()
 }
 
 func checkErr(err error) {
