@@ -7,14 +7,14 @@ import (
 	esmaq "github.com/stevenferrer/esmaq"
 )
 
-type State esmaq.StateType
+type State = esmaq.StateType
 
 const (
 	StateOff State = "off"
 	StateOn  State = "on"
 )
 
-type Event esmaq.EventType
+type Event = esmaq.EventType
 
 const (
 	EventSwitchOn  Event = "switchOn"
@@ -49,12 +49,12 @@ func (sm *MySwitch) SwitchOn(ctx context.Context, a int) (b string, err error) {
 		return "", errors.New("\"from\" state not set in context")
 	}
 
-	fromState, err := sm.core.GetState(esmaq.StateType(from))
+	fromState, err := sm.core.GetState(from)
 	if err != nil {
 		return "", err
 	}
 
-	toState, err := sm.core.Transition(esmaq.EventType(EventSwitchOn), esmaq.StateType(from))
+	toState, err := sm.core.Transition(EventSwitchOn, from)
 	if err != nil {
 		return "", err
 	}
@@ -69,7 +69,7 @@ func (sm *MySwitch) SwitchOn(ctx context.Context, a int) (b string, err error) {
 		}
 	}
 
-	if sm.callbacks != nil {
+	if sm.callbacks != nil && sm.callbacks.SwitchOn != nil {
 		b, err = sm.callbacks.SwitchOn(ctx, a)
 		if err != nil {
 			return "", err
@@ -93,12 +93,12 @@ func (sm *MySwitch) SwitchOff(ctx context.Context) (err error) {
 		return errors.New("\"from\" state not set in context")
 	}
 
-	fromState, err := sm.core.GetState(esmaq.StateType(from))
+	fromState, err := sm.core.GetState(from)
 	if err != nil {
 		return err
 	}
 
-	toState, err := sm.core.Transition(esmaq.EventType(EventSwitchOff), esmaq.StateType(from))
+	toState, err := sm.core.Transition(EventSwitchOff, from)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (sm *MySwitch) SwitchOff(ctx context.Context) (err error) {
 		}
 	}
 
-	if sm.callbacks != nil {
+	if sm.callbacks != nil && sm.callbacks.SwitchOff != nil {
 		err = sm.callbacks.SwitchOff(ctx)
 		if err != nil {
 			return err
@@ -152,22 +152,22 @@ func ToCtx(ctx context.Context) (State, bool) {
 func NewMySwitch(actions *Actions, callbacks *Callbacks) *MySwitch {
 	stateConfigs := []esmaq.StateConfig{
 		{
-			From:    esmaq.StateType(StateOff),
+			From:    StateOff,
 			Actions: actions.Off,
 			Transitions: []esmaq.TransitionConfig{
 				{
-					Event: esmaq.EventType(EventSwitchOn),
-					To:    esmaq.StateType(StateOn),
+					Event: EventSwitchOn,
+					To:    StateOn,
 				},
 			},
 		},
 		{
-			From:    esmaq.StateType(StateOn),
+			From:    StateOn,
 			Actions: actions.On,
 			Transitions: []esmaq.TransitionConfig{
 				{
-					Event: esmaq.EventType(EventSwitchOff),
-					To:    esmaq.StateType(StateOff),
+					Event: EventSwitchOff,
+					To:    StateOff,
 				},
 			},
 		},

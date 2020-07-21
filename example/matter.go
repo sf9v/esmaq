@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/stevenferrer/esmaq"
 	"github.com/stevenferrer/esmaq/example/internal/matter"
 	"github.com/stevenferrer/esmaq/gen"
 )
@@ -14,10 +13,10 @@ func matterExample() {
 }
 
 func generateMatter() {
-	statesOfMatter := []esmaq.StateConfig{
+	statesOfMatter := []gen.State{
 		{
 			From: "solid",
-			Transitions: []esmaq.TransitionConfig{
+			Transitions: []gen.Transition{
 				{
 					Event: "melt",
 					To:    "liquid",
@@ -26,7 +25,7 @@ func generateMatter() {
 		},
 		{
 			From: "liquid",
-			Transitions: []esmaq.TransitionConfig{
+			Transitions: []gen.Transition{
 				{
 					Event: "freeze",
 					To:    "solid",
@@ -39,7 +38,7 @@ func generateMatter() {
 		},
 		{
 			From: "gas",
-			Transitions: []esmaq.TransitionConfig{
+			Transitions: []gen.Transition{
 				{
 					Event: "condense",
 					To:    "liquid",

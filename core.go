@@ -1,11 +1,12 @@
 package esmaq
 
+// State is a state
 type State struct {
 	Transitions map[EventType]*Transition
-
-	Actions Actions
+	Actions     Actions
 }
 
+// Transition is a transition
 type Transition struct {
 	To StateType
 }

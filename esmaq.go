@@ -23,19 +23,6 @@ type Actions struct {
 
 // Transitions is a transition config
 type TransitionConfig struct {
-	To       StateType
-	Event    EventType
-	Callback Callback
+	To    StateType
+	Event EventType
 }
-
-// Callback is the callback function config
-type Callback struct {
-	Ins  Ins
-	Outs Outs
-}
-
-// Ins are input parameters
-type Ins map[string]interface{}
-
-// Outs are output parameters
-type Outs map[string]interface{}

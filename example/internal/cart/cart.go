@@ -7,16 +7,16 @@ import (
 	esmaq "github.com/stevenferrer/esmaq"
 )
 
-type State esmaq.StateType
+type State = esmaq.StateType
 
 const (
+	StateSubmitted  State = "submitted"
 	StateShopping   State = "shopping"
 	StateFinalizing State = "finalizing"
 	StatePaid       State = "paid"
-	StateSubmitted  State = "submitted"
 )
 
-type Event esmaq.EventType
+type Event = esmaq.EventType
 
 const (
 	EventCheckout Event = "checkout"
@@ -55,12 +55,12 @@ func (sm *Cart) Checkout(ctx context.Context, cartID int64) (err error) {
 		return errors.New("\"from\" state not set in context")
 	}
 
-	fromState, err := sm.core.GetState(esmaq.StateType(from))
+	fromState, err := sm.core.GetState(from)
 	if err != nil {
 		return err
 	}
 
-	toState, err := sm.core.Transition(esmaq.EventType(EventCheckout), esmaq.StateType(from))
+	toState, err := sm.core.Transition(EventCheckout, from)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func (sm *Cart) Checkout(ctx context.Context, cartID int64) (err error) {
 		}
 	}
 
-	if sm.callbacks != nil {
+	if sm.callbacks != nil && sm.callbacks.Checkout != nil {
 		err = sm.callbacks.Checkout(ctx, cartID)
 		if err != nil {
 			return err
@@ -99,12 +99,12 @@ func (sm *Cart) Pay(ctx context.Context, cartID int64, paymentId int64) (err err
 		return errors.New("\"from\" state not set in context")
 	}
 
-	fromState, err := sm.core.GetState(esmaq.StateType(from))
+	fromState, err := sm.core.GetState(from)
 	if err != nil {
 		return err
 	}
 
-	toState, err := sm.core.Transition(esmaq.EventType(EventPay), esmaq.StateType(from))
+	toState, err := sm.core.Transition(EventPay, from)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (sm *Cart) Pay(ctx context.Context, cartID int64, paymentId int64) (err err
 		}
 	}
 
-	if sm.callbacks != nil {
+	if sm.callbacks != nil && sm.callbacks.Pay != nil {
 		err = sm.callbacks.Pay(ctx, cartID, paymentId)
 		if err != nil {
 			return err
@@ -143,12 +143,12 @@ func (sm *Cart) Submit(ctx context.Context, cartID int64) (orderId int64, err er
 		return 0, errors.New("\"from\" state not set in context")
 	}
 
-	fromState, err := sm.core.GetState(esmaq.StateType(from))
+	fromState, err := sm.core.GetState(from)
 	if err != nil {
 		return 0, err
 	}
 
-	toState, err := sm.core.Transition(esmaq.EventType(EventSubmit), esmaq.StateType(from))
+	toState, err := sm.core.Transition(EventSubmit, from)
 	if err != nil {
 		return 0, err
 	}
@@ -163,7 +163,7 @@ func (sm *Cart) Submit(ctx context.Context, cartID int64) (orderId int64, err er
 		}
 	}
 
-	if sm.callbacks != nil {
+	if sm.callbacks != nil && sm.callbacks.Submit != nil {
 		orderId, err = sm.callbacks.Submit(ctx, cartID)
 		if err != nil {
 			return 0, err
@@ -202,37 +202,37 @@ func ToCtx(ctx context.Context) (State, bool) {
 func NewCart(actions *Actions, callbacks *Callbacks) *Cart {
 	stateConfigs := []esmaq.StateConfig{
 		{
-			From:    esmaq.StateType(StateShopping),
+			From:    StateShopping,
 			Actions: actions.Shopping,
 			Transitions: []esmaq.TransitionConfig{
 				{
-					Event: esmaq.EventType(EventCheckout),
-					To:    esmaq.StateType(StateFinalizing),
+					Event: EventCheckout,
+					To:    StateFinalizing,
 				},
 			},
 		},
 		{
-			From:    esmaq.StateType(StateFinalizing),
+			From:    StateFinalizing,
 			Actions: actions.Finalizing,
 			Transitions: []esmaq.TransitionConfig{
 				{
-					Event: esmaq.EventType(EventPay),
-					To:    esmaq.StateType(StatePaid),
+					Event: EventPay,
+					To:    StatePaid,
 				},
 			},
 		},
 		{
-			From:    esmaq.StateType(StatePaid),
+			From:    StatePaid,
 			Actions: actions.Paid,
 			Transitions: []esmaq.TransitionConfig{
 				{
-					Event: esmaq.EventType(EventSubmit),
-					To:    esmaq.StateType(StateSubmitted),
+					Event: EventSubmit,
+					To:    StateSubmitted,
 				},
 			},
 		},
 		{
-			From:        esmaq.StateType(StateSubmitted),
+			From:        StateSubmitted,
 			Actions:     actions.Submitted,
 			Transitions: []esmaq.TransitionConfig{},
 		},

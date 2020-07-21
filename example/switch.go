@@ -31,34 +31,35 @@ func switchExample() {
 		},
 	})
 
-	ctx := context.Background()
-	_, err := mySwitch.SwitchOn(myswitch.CtxWtFrom(ctx, myswitch.StateOff), 0)
+	ctx := myswitch.CtxWtFrom(context.Background(), myswitch.StateOff)
+	_, err := mySwitch.SwitchOn(ctx, 0)
 	checkErr(err)
 
-	err = mySwitch.SwitchOff(myswitch.CtxWtFrom(ctx, myswitch.StateOn))
+	ctx = myswitch.CtxWtFrom(ctx, myswitch.StateOn)
+	err = mySwitch.SwitchOff(ctx)
 	checkErr(err)
 }
 
 func generateSwitch() {
-	mySwitch := []esmaq.StateConfig{
+	mySwitch := []gen.State{
 		{
 			From: "off",
-			Transitions: []esmaq.TransitionConfig{
+			Transitions: []gen.Transition{
 				{
 					Event: "switchOn",
 					To:    "on",
-					Callback: esmaq.Callback{
-						Ins: esmaq.Ins{
+					Callback: gen.Callback{
+						Ins: gen.Ins{
 							"a": 0,
 						},
-						Outs: esmaq.Outs{"b": ""},
+						Outs: gen.Outs{"b": ""},
 					},
 				},
 			},
 		},
 		{
 			From: "on",
-			Transitions: []esmaq.TransitionConfig{
+			Transitions: []gen.Transition{
 				{
 					Event: "switchOff",
 					To:    "off",

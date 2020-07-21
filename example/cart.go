@@ -80,16 +80,15 @@ func cartExample() {
 }
 
 func generateCart() {
-	myCart := []esmaq.StateConfig{
+	myCart := []gen.State{
 		{
-			From:    "shopping",
-			Actions: esmaq.Actions{},
-			Transitions: []esmaq.TransitionConfig{
+			From: "shopping",
+			Transitions: []gen.Transition{
 				{
 					Event: "checkout",
 					To:    "finalizing",
-					Callback: esmaq.Callback{
-						Ins: esmaq.Ins{
+					Callback: gen.Callback{
+						Ins: gen.Ins{
 							"cartID": int64(0),
 						},
 					},
@@ -98,12 +97,12 @@ func generateCart() {
 		},
 		{
 			From: "finalizing",
-			Transitions: []esmaq.TransitionConfig{
+			Transitions: []gen.Transition{
 				{
 					Event: "pay",
 					To:    "paid",
-					Callback: esmaq.Callback{
-						Ins: esmaq.Ins{
+					Callback: gen.Callback{
+						Ins: gen.Ins{
 							"cartID":    int64(0),
 							"paymentId": int64(0),
 						},
@@ -113,15 +112,15 @@ func generateCart() {
 		},
 		{
 			From: "paid",
-			Transitions: []esmaq.TransitionConfig{
+			Transitions: []gen.Transition{
 				{
 					Event: "submit",
 					To:    "submitted",
-					Callback: esmaq.Callback{
-						Ins: esmaq.Ins{
+					Callback: gen.Callback{
+						Ins: gen.Ins{
 							"cartID": int64(0),
 						},
-						Outs: esmaq.Outs{
+						Outs: gen.Outs{
 							"orderId": int64(0),
 						},
 					},
