@@ -14,7 +14,7 @@ import "log"
 //	from state as single struct
 // - integrate with go generate
 // - also, don't forget to add test
-// - use type aliasing for type State so we don't need to type cast
+// - use type aliasing for type State so we don't need to type cast - OK
 
 func main() {
 	generateSwitch()

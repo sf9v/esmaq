@@ -4,27 +4,27 @@ import "fmt"
 
 // UndefinedStateError is an error when a state is not defined
 type UndefinedStateError struct {
-	s StateType
+	state StateType
 }
 
 func (e *UndefinedStateError) Error() string {
-	return fmt.Sprintf("state %q is not defined", e.s)
+	return fmt.Sprintf("state %q is not defined", e.state)
 }
 
-func newUndefinedStateError(s StateType) *UndefinedStateError {
-	return &UndefinedStateError{s: s}
+func newUndefinedStateError(state StateType) *UndefinedStateError {
+	return &UndefinedStateError{state: state}
 }
 
 // UndefinedEventError is an error when an event is not defined
 type UndefinedEventError struct {
-	e EventType
-	s StateType
+	event EventType
+	from  StateType
 }
 
 func (e *UndefinedEventError) Error() string {
-	return fmt.Sprintf("transition event %q not allowed in %q state", e.e, e.s)
+	return fmt.Sprintf("transition event %q is not allowed in %q state", e.event, e.from)
 }
 
-func newUndefinedEventError(e EventType, s StateType) *UndefinedEventError {
-	return &UndefinedEventError{e: e, s: s}
+func newUndefinedEventError(event EventType, from StateType) *UndefinedEventError {
+	return &UndefinedEventError{event: event, from: from}
 }
