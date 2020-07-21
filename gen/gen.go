@@ -70,12 +70,17 @@ func Gen(schema Schema, out io.Writer) error {
 	rcvrType := "*" + name
 
 	// get all possible states
-	states := map[esmaq.StateType]bool{schema.States[0].From: true}
+	states := map[esmaq.StateType]State{}
+	for _, state := range schema.States {
+		states[state.From] = state
+	}
 	for _, state := range schema.States {
 		for _, trsn := range state.Transitions {
 			_, ok := states[trsn.To]
 			if !ok {
-				states[trsn.To] = true
+				states[trsn.To] = State{
+					From: trsn.To,
+				}
 			}
 		}
 	}
@@ -92,7 +97,7 @@ func Gen(schema Schema, out io.Writer) error {
 	f.Line()
 	f.Type().Id("Event").Op("=").Qual(pkgPath, "EventType")
 	f.Const().DefsFunc(func(g *jen.Group) {
-		for _, state := range schema.States {
+		for _, state := range states {
 			for _, trsn := range state.Transitions {
 				e := string(trsn.Event)
 				eName := toCam(fmt.Sprintf("event_%s", trsn.Event))
@@ -111,7 +116,7 @@ func Gen(schema Schema, out io.Writer) error {
 	cbcArgs := []jen.Code{}
 	methods := []jen.Code{}
 
-	for _, state := range schema.States {
+	for _, state := range states {
 		for _, trsn := range state.Transitions {
 			fnName := toCam(string(trsn.Event))
 
@@ -152,26 +157,19 @@ func Gen(schema Schema, out io.Writer) error {
 			method := jen.Func().Params(jen.Id(rcvr).Id(rcvrType)).
 				Id(fnName).Params(ins...).Params(outs...).
 				BlockFunc(func(g *jen.Group) {
-					jen.Id("next").Qual(pkgPath, "State").
-						Op("=").Lit(string(trsn.To))
-
-					// get "from" in context
-					g.List(jen.Id("from"), jen.Id("ok")).Op(":=").
-						Id("fromCtx").Call(jen.Id("ctx"))
-
+					g.List(jen.Id("from"), jen.Id("ok")).
+						Op(":=").Id("fromCtx").Call(jen.Id("ctx"))
 					g.If(jen.Op("!").Id("ok")).
-						BlockFunc(func(g *jen.Group) {
-							rets := append(errRets, jen.Qual("errors", "New").
-								Call(jen.Lit(`"from" state not set in context`)))
-							g.Return(rets...)
-						}).Line()
+						Block(jen.Return(append(errRets,
+							jen.Qual("errors", "New").
+								Call(jen.Lit(`"from" is not set in context`)))...)).
+						Line()
 
 					g.List(jen.Id("fromState"), jen.Id("err")).Op(":=").Id(rcvr).
 						Dot("core").Dot("GetState").Call(jen.Id("from"))
 					g.If(jen.Err().Op("!=").Nil()).
 						BlockFunc(func(g *jen.Group) {
-							rets := append(errRets, jen.Id("err"))
-							g.Return(rets...)
+							g.Return(append(errRets, jen.Id("err"))...)
 						}).Line()
 
 					g.List(jen.Id("toState"), jen.Id("err")).
@@ -181,8 +179,7 @@ func Gen(schema Schema, out io.Writer) error {
 						Call(jen.Id("from"), jen.Id(toCam("event_"+string(trsn.Event))))
 					g.If(jen.Err().Op("!=").Nil()).
 						BlockFunc(func(g *jen.Group) {
-							rets := append(errRets, jen.Id("err"))
-							g.Return(rets...)
+							g.Return(append(errRets, jen.Id("err"))...)
 						}).Line()
 
 					toState := toCam("state_" + string(trsn.To))
@@ -197,8 +194,7 @@ func Gen(schema Schema, out io.Writer) error {
 								Dot(cbName).Call(inIDs...)
 							g.If(jen.Err().Op("!=").Nil()).
 								BlockFunc(func(g *jen.Group) {
-									rets := append(errRets, jen.Id("err"))
-									g.Return(rets...)
+									g.Return(append(errRets, jen.Id("err"))...)
 								}).Line()
 						}).
 						Line()
@@ -212,8 +208,7 @@ func Gen(schema Schema, out io.Writer) error {
 								Dot("OnExit").Call(jen.Id("ctx"))
 							g.If(jen.Err().Op("!=").Nil()).
 								BlockFunc(func(g *jen.Group) {
-									rets := append(errRets, jen.Id("err"))
-									g.Return(rets...)
+									g.Return(append(errRets, jen.Id("err"))...)
 								})
 						}).
 						Line()
@@ -224,8 +219,7 @@ func Gen(schema Schema, out io.Writer) error {
 								Call(jen.Id("ctx"))
 							g.If(jen.Err().Op("!=").Nil()).
 								BlockFunc(func(g *jen.Group) {
-									rets := append(errRets, jen.Id("err"))
-									g.Return(rets...)
+									g.Return(append(errRets, jen.Id("err"))...)
 								})
 						}).
 						Line()
@@ -251,10 +245,12 @@ func Gen(schema Schema, out io.Writer) error {
 		}
 	})
 
+	// state machine methods
 	for _, m := range methods {
 		f.Add(m).Line()
 	}
 
+	// context helpers
 	f.Func().Id("CtxWtFrom").
 		Params(jen.Id("ctx").Qual("context", "Context"),
 			jen.Id("from").Id("State"),
@@ -303,6 +299,7 @@ func Gen(schema Schema, out io.Writer) error {
 			g.Return(jen.Id("to"), jen.Id("ok"))
 		}).Line()
 
+	// state machine factory
 	f.Func().Id("New"+toCam(name)).
 		Params(
 			jen.Id("actions").Op("*").Id("Actions"),
@@ -313,7 +310,7 @@ func Gen(schema Schema, out io.Writer) error {
 			g.Id("stateConfigs").Op(":=").Op("[]").
 				Qual(pkgPath, "StateConfig").
 				BlockFunc(func(g *jen.Group) {
-					for _, state := range schema.States {
+					for _, state := range states {
 						g.BlockFunc(func(g *jen.Group) {
 							g.Id("From").Op(":").Id(toCam("state_" + string(state.From))).Op(",")
 							g.Id("Actions").Op(":").Id("actions").Dot(toCam(string(state.From))).Op(",")
@@ -329,6 +326,7 @@ func Gen(schema Schema, out io.Writer) error {
 								}).Op(",")
 						}).Op(",")
 					}
+
 				}).Line()
 
 			g.Id(toLowCam(name)).
@@ -348,9 +346,10 @@ func Gen(schema Schema, out io.Writer) error {
 func getArg(id string, t reflect.Type) jen.Code {
 	c := jen.Id(id)
 
+	// FIXME: add support for reference types (t.String())
 	// built-in types
 	if t.Name() != "" {
-		switch t.Name() {
+		switch t.String() {
 		case "int":
 			return c.Int()
 		case "int32":
@@ -378,6 +377,8 @@ func getArg(id string, t reflect.Type) jen.Code {
 }
 
 func getZeroVal(t reflect.Type) jen.Code {
+
+	// FIXME: add support for other types
 	// built-in types
 	if t.Name() != "" {
 		switch t.Name() {
@@ -401,7 +402,6 @@ func getZeroVal(t reflect.Type) jen.Code {
 			return jen.Lit("")
 		}
 	}
-
 	return jen.Nil()
 }
 
