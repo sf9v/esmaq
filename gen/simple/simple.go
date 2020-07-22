@@ -82,7 +82,6 @@ func (sm *Simple) AToB(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi 
 		if err != nil {
 			return 0, 0, 0, err
 		}
-
 	}
 
 	if fromst.Actions.OnExit != nil {
@@ -126,7 +125,6 @@ func (sm *Simple) AToA(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (
 		if err != nil {
 			return 0, 0, err
 		}
-
 	}
 
 	if fromst.Actions.OnExit != nil {
@@ -170,7 +168,6 @@ func (sm *Simple) BToC(ctx context.Context, mis string) (mos string, err error) 
 		if err != nil {
 			return "", err
 		}
-
 	}
 
 	if fromst.Actions.OnExit != nil {
@@ -214,7 +211,6 @@ func (sm *Simple) BToA(ctx context.Context, sp1 decimal.Decimal) (sp2 string, er
 		if err != nil {
 			return "", err
 		}
-
 	}
 
 	if fromst.Actions.OnExit != nil {

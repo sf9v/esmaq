@@ -86,7 +86,6 @@ func Gen(schema Schema, out io.Writer) error {
 			if isIn(trsnCfg.To) {
 				continue
 			}
-
 			states = append(states, State{From: trsnCfg.To})
 		}
 	}
@@ -172,28 +171,21 @@ func Gen(schema Schema, out io.Writer) error {
 					g.List(jen.Id("from"), jen.Id("ok")).
 						Op(":=").Id("fromCtx").Call(jen.Id("ctx"))
 					g.If(jen.Op("!").Id("ok")).
-						BlockFunc(func(g *jen.Group) {
-							g.Return(append(cloneC(errRets), jen.Qual("errors", "New").
-								Call(jen.Lit(`"from" is not set in context`)))...)
-						}).
-						Line()
+						Block(jen.Return(append(cloneC(errRets), jen.Qual("errors", "New").
+							Call(jen.Lit(`"from" is not set in context`)))...)).Line()
 
 					g.List(jen.Id("fromst"), jen.Id("err")).Op(":=").Id(rcvr).
 						Dot("core").Dot("GetState").
 						Call(jen.Id("castst").Call(jen.Id("from")))
 					g.If(jen.Err().Op("!=").Nil()).
-						BlockFunc(func(g *jen.Group) {
-							g.Return(append(cloneC(errRets), jen.Id("err"))...)
-						}).Line()
+						Block(jen.Return(append(cloneC(errRets), jen.Id("err"))...)).Line()
 
 					g.List(jen.Id("tost"), jen.Id("err")).
 						Op(":=").Id(rcvr).Dot("core").Dot("Transition").
 						Call(jen.Id("castst").Call(jen.Id("from")),
 							jen.Id("castet").Call(jen.Id(etName(trsn.Event))))
 					g.If(jen.Err().Op("!=").Nil()).
-						BlockFunc(func(g *jen.Group) {
-							g.Return(append(cloneC(errRets), jen.Id("err"))...)
-						}).Line()
+						Block(jen.Return(append(cloneC(errRets), jen.Id("err"))...)).Line()
 
 					g.Comment(`inject "to" in context`)
 					g.Id("ctx").Op("=").Id("ctxWtTo").
@@ -205,11 +197,8 @@ func Gen(schema Schema, out io.Writer) error {
 							g.List(outIDs...).Op("=").Id(rcvr).Dot("callbacks").
 								Dot(cbName).Call(inIDs...)
 							g.If(jen.Err().Op("!=").Nil()).
-								BlockFunc(func(g *jen.Group) {
-									g.Return(append(cloneC(errRets), jen.Id("err"))...)
-								}).Line()
-						}).
-						Line()
+								Block(jen.Return(append(cloneC(errRets), jen.Id("err"))...))
+						}).Line()
 
 					g.If(jen.Id("fromst").
 						Dot("Actions").
@@ -219,22 +208,14 @@ func Gen(schema Schema, out io.Writer) error {
 							g.Err().Op("=").Id("fromst").Dot("Actions").
 								Dot("OnExit").Call(jen.Id("ctx"))
 							g.If(jen.Err().Op("!=").Nil()).
-								BlockFunc(func(g *jen.Group) {
-									g.Return(append(cloneC(errRets), jen.Id("err"))...)
-								})
+								Block(jen.Return(append(cloneC(errRets), jen.Id("err"))...))
 						}).
 						Line()
 
 					g.If(jen.Id("tost").Dot("Actions").Dot("OnEnter").Op("!=").Nil()).
-						BlockFunc(func(g *jen.Group) {
-							g.Err().Op("=").Id("tost").Dot("Actions").Dot("OnEnter").
-								Call(jen.Id("ctx"))
-							g.If(jen.Err().Op("!=").Nil()).
-								BlockFunc(func(g *jen.Group) {
-									g.Return(append(cloneC(errRets), jen.Id("err"))...)
-								})
-						}).
-						Line()
+						Block(jen.Err().Op("=").Id("tost").Dot("Actions").Dot("OnEnter").
+							Call(jen.Id("ctx")), jen.If(jen.Err().Op("!=").Nil()).
+							Block(jen.Return(append(cloneC(errRets), jen.Id("err"))...))).Line()
 
 					g.Return(okRets...)
 				})
@@ -266,103 +247,78 @@ func Gen(schema Schema, out io.Writer) error {
 	f.Func().Id("CtxWtFrom").
 		Params(jen.Id("ctx").Qual("context", "Context"),
 			jen.Id("from").Id("State"),
-		).
-		Params(jen.Qual("context", "Context")).
-		BlockFunc(func(g *jen.Group) {
-			g.Return(jen.Qual("context", "WithValue").
-				Call(jen.Id("ctx"), jen.Id("fromKey"), jen.Id("from")))
-		}).Line()
+		).Params(jen.Qual("context", "Context")).
+		Block(jen.Return(jen.Qual("context", "WithValue").
+			Call(jen.Id("ctx"), jen.Id("fromKey"), jen.Id("from")))).Line()
 
 	f.Func().Id("ctxWtTo").
 		Params(jen.Id("ctx").Qual("context", "Context"),
 			jen.Id("to").Id("State"),
 		).
 		Params(jen.Qual("context", "Context")).
-		BlockFunc(func(g *jen.Group) {
-			g.Return(jen.Qual("context", "WithValue").
-				Call(jen.Id("ctx"), jen.Id("toKey"), jen.Id("to")))
-		}).Line()
+		Block(jen.Return(jen.Qual("context", "WithValue").
+			Call(jen.Id("ctx"), jen.Id("toKey"), jen.Id("to")))).
+		Line()
 
 	f.Func().Id("fromCtx").
 		Params(jen.Id("ctx").Qual("context", "Context")).
 		Params(jen.Id("State"), jen.Bool()).
-		BlockFunc(func(g *jen.Group) {
-			g.List(jen.Id("from"), jen.Id("ok")).
-				Op(":=").
-				Id("ctx").
-				Dot("Value").
-				Call(jen.Id("fromKey")).
-				Assert(jen.Id("State"))
-
-			g.Return(jen.Id("from"), jen.Id("ok"))
-		}).Line()
+		Block(jen.List(jen.Id("from"), jen.Id("ok")).Op(":=").Id("ctx").
+			Dot("Value").Call(jen.Id("fromKey")).Assert(jen.Id("State")),
+			jen.Return(jen.Id("from"), jen.Id("ok"))).Line()
 
 	f.Func().Id("ToCtx").
 		Params(jen.Id("ctx").Qual("context", "Context")).
 		Params(jen.Id("State"), jen.Bool()).
-		BlockFunc(func(g *jen.Group) {
-			g.List(jen.Id("to"), jen.Id("ok")).
-				Op(":=").
-				Id("ctx").
-				Dot("Value").
-				Call(jen.Id("toKey")).
-				Assert(jen.Id("State"))
-
-			g.Return(jen.Id("to"), jen.Id("ok"))
-		}).Line()
+		Block(jen.List(jen.Id("to"), jen.Id("ok")).Op(":=").Id("ctx").
+			Dot("Value").Call(jen.Id("toKey")).Assert(jen.Id("State")),
+			jen.Return(jen.Id("to"), jen.Id("ok"))).Line()
 
 	// factory
-	f.Func().Id("New"+toCamel(name)).
-		Params(
-			jen.Id("actions").Op("*").Id("Actions"),
-			jen.Id("callbacks").Op("*").Id("Callbacks"),
-		).
-		Params(jen.Id("*" + name)).
-		BlockFunc(func(g *jen.Group) {
-			g.Id("stateConfigs").Op(":=").Op("[]").
-				Qual(pkgPath, "StateConfig").
-				BlockFunc(func(g *jen.Group) {
-					for _, state := range states {
-						g.BlockFunc(func(g *jen.Group) {
-							g.Id("From").Op(":").Id("castst").
-								Call(jen.Id(stName(state.From))).Op(",")
-							g.Id("Actions").Op(":").Id("actions").
-								Dot(toCamel(string(state.From))).Op(",")
-							g.Id("Transitions").Op(":").Op("[]").
-								Qual(pkgPath, "TransitionConfig").
-								BlockFunc(func(g *jen.Group) {
-									for _, trsn := range state.Transitions {
-										g.BlockFunc(func(g *jen.Group) {
-											g.Id("Event").Op(":").Id("castet").
-												Call(jen.Id(etName(trsn.Event))).Op(",")
-											g.Id("To").Op(":").Id("castst").
-												Call(jen.Id(stName(trsn.To))).Op(",")
-										}).Op(",")
-									}
-								}).Op(",")
-						}).Op(",")
-					}
+	f.Func().Id("New"+toCamel(name)).Params(
+		jen.Id("actions").Op("*").Id("Actions"),
+		jen.Id("callbacks").Op("*").Id("Callbacks"),
+	).Params(jen.Id("*" + name)).BlockFunc(func(g *jen.Group) {
+		g.Id("stateConfigs").Op(":=").Op("[]").Qual(pkgPath, "StateConfig").
+			BlockFunc(func(g *jen.Group) {
+				for _, state := range states {
+					g.BlockFunc(func(g *jen.Group) {
+						g.Id("From").Op(":").Id("castst").
+							Call(jen.Id(stName(state.From))).Op(",")
+						g.Id("Actions").Op(":").Id("actions").
+							Dot(toCamel(string(state.From))).Op(",")
+						g.Id("Transitions").Op(":").Op("[]").
+							Qual(pkgPath, "TransitionConfig").
+							BlockFunc(func(g *jen.Group) {
+								for _, trsn := range state.Transitions {
+									g.BlockFunc(func(g *jen.Group) {
+										g.Id("Event").Op(":").Id("castet").
+											Call(jen.Id(etName(trsn.Event))).Op(",")
+										g.Id("To").Op(":").Id("castst").
+											Call(jen.Id(stName(trsn.To))).Op(",")
+									}).Op(",")
+								}
+							}).Op(",")
+					}).Op(",")
+				}
+			}).Line()
 
-				}).Line()
-
-			g.Id(toLowCamel(name)).
-				Op(":=").Op("&").Id(name).
-				BlockFunc(func(g *jen.Group) {
-					g.Id("core").Op(":").
-						Qual(pkgPath, "NewCore").
-						Params(jen.Id("stateConfigs")).Op(",")
-					g.Id("callbacks").Op(":").Id("callbacks").Op(",")
-				}).Line()
-			g.Return().Id(toLowCamel(name))
+		g.Id(toLowCamel(name)).Op(":=").Op("&").Id(name).BlockFunc(func(g *jen.Group) {
+			g.Id("core").Op(":").Qual(pkgPath, "NewCore").Params(jen.Id("stateConfigs")).Op(",")
+			g.Id("callbacks").Op(":").Id("callbacks").Op(",")
 		}).Line()
+
+		g.Return().Id(toLowCamel(name))
+	}).Line()
 
 	f.Func().Id("castst").Params(jen.Id("s").Id("State")).
 		Params(jen.Qual(pkgPath, "StateType")).
-		Block(jen.Return(jen.Qual(pkgPath, "StateType").Call(jen.Id("s")))).
-		Line()
+		Block(jen.Return(jen.Qual(pkgPath, "StateType").
+			Call(jen.Id("s")))).Line()
 	f.Func().Id("castet").Params(jen.Id("e").Id("Event")).
 		Params(jen.Qual(pkgPath, "EventType")).
-		Block(jen.Return(jen.Qual(pkgPath, "EventType").Call(jen.Id("e"))))
+		Block(jen.Return(jen.Qual(pkgPath, "EventType").
+			Call(jen.Id("e"))))
 
 	return f.Render(out)
 }
