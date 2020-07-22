@@ -1,7 +1,6 @@
 package gen
 
 import (
-	"fmt"
 	"io"
 	"reflect"
 
@@ -54,7 +53,7 @@ func Gen(schema Schema, out io.Writer) error {
 	}
 
 	// camelize name
-	name = toCam(name)
+	name = toCamel(name)
 
 	//default package name
 	pkg := "main"
@@ -69,10 +68,10 @@ func Gen(schema Schema, out io.Writer) error {
 	rcvrType := "*" + name
 
 	states := []State{}
-	for _, state := range schema.States {
-		states = append(states, state)
-	}
+	states = append(states, schema.States...)
 
+	// helper method for checking if
+	// state is already in collection
 	isIn := func(s esmaq.StateType) bool {
 		for _, state := range states {
 			if s == state.From {
@@ -92,23 +91,22 @@ func Gen(schema Schema, out io.Writer) error {
 		}
 	}
 
-	f.Type().Id("State").Op("=").Qual(pkgPath, "StateType")
+	// state types
+	f.Type().Id("State").Qual(pkgPath, "StateType")
 	f.Const().DefsFunc(func(g *jen.Group) {
 		for _, state := range states {
 			s := string(state.From)
-			sName := toCam(fmt.Sprintf("state_%s", s))
-			g.Id(sName).Id("State").Op("=").Lit(s)
+			g.Id(stName(state.From)).Id("State").Op("=").Lit(s)
 		}
-	})
+	}).Line()
 
-	f.Line()
-	f.Type().Id("Event").Op("=").Qual(pkgPath, "EventType")
+	// event types
+	f.Type().Id("Event").Qual(pkgPath, "EventType")
 	f.Const().DefsFunc(func(g *jen.Group) {
 		for _, state := range states {
 			for _, trsn := range state.Transitions {
 				e := string(trsn.Event)
-				eName := toCam(fmt.Sprintf("event_%s", trsn.Event))
-				g.Id(eName).Id("Event").Op("=").Lit(e)
+				g.Id(etName(trsn.Event)).Id("Event").Op("=").Lit(e)
 			}
 		}
 	})
@@ -126,7 +124,7 @@ func Gen(schema Schema, out io.Writer) error {
 	methods := []jen.Code{}
 	for _, state := range states {
 		for _, trsn := range state.Transitions {
-			fnName := toCam(string(trsn.Event))
+			fnName := toCamel(string(trsn.Event))
 
 			// input args
 			ins := []jen.Code{jen.Id("ctx").Qual("context", "Context")}
@@ -152,7 +150,7 @@ func Gen(schema Schema, out io.Writer) error {
 			}
 
 			// return args when no error happened
-			okRets := append(clonec(outIDs), jen.Nil())
+			okRets := append(cloneC(outIDs), jen.Nil())
 
 			// add err in as last arg
 			outs = append(outs, jen.Id("err").Error())
@@ -169,32 +167,31 @@ func Gen(schema Schema, out io.Writer) error {
 						Op(":=").Id("fromCtx").Call(jen.Id("ctx"))
 					g.If(jen.Op("!").Id("ok")).
 						BlockFunc(func(g *jen.Group) {
-							g.Return(append(clonec(errRets), jen.Qual("errors", "New").
+							g.Return(append(cloneC(errRets), jen.Qual("errors", "New").
 								Call(jen.Lit(`"from" is not set in context`)))...)
 						}).
 						Line()
 
-					g.List(jen.Id("fromState"), jen.Id("err")).Op(":=").Id(rcvr).
-						Dot("core").Dot("GetState").Call(jen.Id("from"))
+					g.List(jen.Id("fromst"), jen.Id("err")).Op(":=").Id(rcvr).
+						Dot("core").Dot("GetState").
+						Call(jen.Id("castst").Call(jen.Id("from")))
 					g.If(jen.Err().Op("!=").Nil()).
 						BlockFunc(func(g *jen.Group) {
-							g.Return(append(clonec(errRets), jen.Id("err"))...)
+							g.Return(append(cloneC(errRets), jen.Id("err"))...)
 						}).Line()
 
-					g.List(jen.Id("toState"), jen.Id("err")).
-						Op(":=").Id(rcvr).
-						Dot("core").
-						Dot("Transition").
-						Call(jen.Id("from"), jen.Id(toCam("event_"+string(trsn.Event))))
+					g.List(jen.Id("tost"), jen.Id("err")).
+						Op(":=").Id(rcvr).Dot("core").Dot("Transition").
+						Call(jen.Id("castst").Call(jen.Id("from")),
+							jen.Id("castet").Call(jen.Id(etName(trsn.Event))))
 					g.If(jen.Err().Op("!=").Nil()).
 						BlockFunc(func(g *jen.Group) {
-							g.Return(append(clonec(errRets), jen.Id("err"))...)
+							g.Return(append(cloneC(errRets), jen.Id("err"))...)
 						}).Line()
 
-					toState := toCam("state_" + string(trsn.To))
 					g.Comment(`inject "to" in context`)
 					g.Id("ctx").Op("=").Id("ctxWtTo").
-						Call(jen.Id("ctx"), jen.Id(toState)).Line()
+						Call(jen.Id("ctx"), jen.Id(stName(trsn.To))).Line()
 
 					g.If(jen.Id(rcvr).Dot("callbacks").Op("!=").Nil()).Op("&&").
 						Id(rcvr).Dot("callbacks").Dot(cbName).Op("!=").Nil().
@@ -203,32 +200,32 @@ func Gen(schema Schema, out io.Writer) error {
 								Dot(cbName).Call(inIDs...)
 							g.If(jen.Err().Op("!=").Nil()).
 								BlockFunc(func(g *jen.Group) {
-									g.Return(append(clonec(errRets), jen.Id("err"))...)
+									g.Return(append(cloneC(errRets), jen.Id("err"))...)
 								}).Line()
 						}).
 						Line()
 
-					g.If(jen.Id("fromState").
+					g.If(jen.Id("fromst").
 						Dot("Actions").
 						Dot("OnExit").
 						Op("!=").Nil()).
 						BlockFunc(func(g *jen.Group) {
-							g.Err().Op("=").Id("fromState").Dot("Actions").
+							g.Err().Op("=").Id("fromst").Dot("Actions").
 								Dot("OnExit").Call(jen.Id("ctx"))
 							g.If(jen.Err().Op("!=").Nil()).
 								BlockFunc(func(g *jen.Group) {
-									g.Return(append(clonec(errRets), jen.Id("err"))...)
+									g.Return(append(cloneC(errRets), jen.Id("err"))...)
 								})
 						}).
 						Line()
 
-					g.If(jen.Id("toState").Dot("Actions").Dot("OnEnter").Op("!=").Nil()).
+					g.If(jen.Id("tost").Dot("Actions").Dot("OnEnter").Op("!=").Nil()).
 						BlockFunc(func(g *jen.Group) {
-							g.Err().Op("=").Id("toState").Dot("Actions").Dot("OnEnter").
+							g.Err().Op("=").Id("tost").Dot("Actions").Dot("OnEnter").
 								Call(jen.Id("ctx"))
 							g.If(jen.Err().Op("!=").Nil()).
 								BlockFunc(func(g *jen.Group) {
-									g.Return(append(clonec(errRets), jen.Id("err"))...)
+									g.Return(append(cloneC(errRets), jen.Id("err"))...)
 								})
 						}).
 						Line()
@@ -240,21 +237,21 @@ func Gen(schema Schema, out io.Writer) error {
 		}
 	}
 
-	// state machine type def
+	// type definition
 	f.Type().Id(name).Struct(
 		jen.Id("core").Op("*").Qual(pkgPath, "Core"),
 		jen.Id("callbacks").Op("*").Id("Callbacks"),
 	).Line()
 
-	// callbacks type def
+	// callback and actions type definition
 	f.Type().Id("Callbacks").Struct(cbFnArgs...).Line()
 	f.Type().Id("Actions").StructFunc(func(g *jen.Group) {
 		for _, state := range states {
-			g.Id(toCam(string(state.From))).Qual(pkgPath, "Actions")
+			g.Id(toCamel(string(state.From))).Qual(pkgPath, "Actions")
 		}
 	})
 
-	// state machine methods
+	// transition methods
 	for _, m := range methods {
 		f.Add(m).Line()
 	}
@@ -308,8 +305,8 @@ func Gen(schema Schema, out io.Writer) error {
 			g.Return(jen.Id("to"), jen.Id("ok"))
 		}).Line()
 
-	// state machine factory
-	f.Func().Id("New"+toCam(name)).
+	// factory
+	f.Func().Id("New"+toCamel(name)).
 		Params(
 			jen.Id("actions").Op("*").Id("Actions"),
 			jen.Id("callbacks").Op("*").Id("Callbacks"),
@@ -321,15 +318,19 @@ func Gen(schema Schema, out io.Writer) error {
 				BlockFunc(func(g *jen.Group) {
 					for _, state := range states {
 						g.BlockFunc(func(g *jen.Group) {
-							g.Id("From").Op(":").Id(toCam("state_" + string(state.From))).Op(",")
-							g.Id("Actions").Op(":").Id("actions").Dot(toCam(string(state.From))).Op(",")
+							g.Id("From").Op(":").Id("castst").
+								Call(jen.Id(stName(state.From))).Op(",")
+							g.Id("Actions").Op(":").Id("actions").
+								Dot(toCamel(string(state.From))).Op(",")
 							g.Id("Transitions").Op(":").Op("[]").
 								Qual(pkgPath, "TransitionConfig").
 								BlockFunc(func(g *jen.Group) {
 									for _, trsn := range state.Transitions {
 										g.BlockFunc(func(g *jen.Group) {
-											g.Id("Event").Op(":").Id(toCam("event_" + string(trsn.Event))).Op(",")
-											g.Id("To").Op(":").Id(toCam("state_" + string(trsn.To))).Op(",")
+											g.Id("Event").Op(":").Id("castet").
+												Call(jen.Id(etName(trsn.Event))).Op(",")
+											g.Id("To").Op(":").Id("castst").
+												Call(jen.Id(stName(trsn.To))).Op(",")
 										}).Op(",")
 									}
 								}).Op(",")
@@ -338,7 +339,7 @@ func Gen(schema Schema, out io.Writer) error {
 
 				}).Line()
 
-			g.Id(toLowCam(name)).
+			g.Id(toLowCamel(name)).
 				Op(":=").Op("&").Id(name).
 				BlockFunc(func(g *jen.Group) {
 					g.Id("core").Op(":").
@@ -346,8 +347,16 @@ func Gen(schema Schema, out io.Writer) error {
 						Params(jen.Id("stateConfigs")).Op(",")
 					g.Id("callbacks").Op(":").Id("callbacks").Op(",")
 				}).Line()
-			g.Return().Id(toLowCam(name))
-		})
+			g.Return().Id(toLowCamel(name))
+		}).Line()
+
+	f.Func().Id("castst").Params(jen.Id("s").Id("State")).
+		Params(jen.Qual(pkgPath, "StateType")).
+		Block(jen.Return(jen.Qual(pkgPath, "StateType").Call(jen.Id("s")))).
+		Line()
+	f.Func().Id("castet").Params(jen.Id("e").Id("Event")).
+		Params(jen.Qual(pkgPath, "EventType")).
+		Block(jen.Return(jen.Qual(pkgPath, "EventType").Call(jen.Id("e"))))
 
 	return f.Render(out)
 }
@@ -414,18 +423,23 @@ func getZeroVal(t reflect.Type) jen.Code {
 	return jen.Nil()
 }
 
-func toCam(s string) string {
+func toCamel(s string) string {
 	return strcase.ToCamel(s)
 }
 
-func toLowCam(s string) string {
+func toLowCamel(s string) string {
 	return strcase.ToLowerCamel(s)
 }
 
-func clonec(c1 []jen.Code) []jen.Code {
+func cloneC(c1 []jen.Code) []jen.Code {
 	c2 := []jen.Code{}
-	for _, c := range c1 {
-		c2 = append(c2, c)
-	}
-	return c2
+	return append(c2, c1...)
+}
+
+func stName(s esmaq.StateType) string {
+	return toCamel("state_" + string(s))
+}
+
+func etName(e esmaq.EventType) string {
+	return toCamel("event_" + string(e))
 }

@@ -8,7 +8,7 @@ import (
 	esmaq "github.com/stevenferrer/esmaq"
 )
 
-type State = esmaq.StateType
+type State esmaq.StateType
 
 const (
 	StateA State = "a"
@@ -16,7 +16,7 @@ const (
 	StateC State = "c"
 )
 
-type Event = esmaq.EventType
+type Event esmaq.EventType
 
 const (
 	EventAToB Event = "a_to_b"
@@ -56,12 +56,12 @@ func (sm *Simple) AToB(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi 
 		return 0, 0, 0, errors.New("\"from\" is not set in context")
 	}
 
-	fromState, err := sm.core.GetState(from)
+	fromst, err := sm.core.GetState(castst(from))
 	if err != nil {
 		return 0, 0, 0, err
 	}
 
-	toState, err := sm.core.Transition(from, EventAToB)
+	tost, err := sm.core.Transition(castst(from), castet(EventAToB))
 	if err != nil {
 		return 0, 0, 0, err
 	}
@@ -77,15 +77,15 @@ func (sm *Simple) AToB(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi 
 
 	}
 
-	if fromState.Actions.OnExit != nil {
-		err = fromState.Actions.OnExit(ctx)
+	if fromst.Actions.OnExit != nil {
+		err = fromst.Actions.OnExit(ctx)
 		if err != nil {
 			return 0, 0, 0, err
 		}
 	}
 
-	if toState.Actions.OnEnter != nil {
-		err = toState.Actions.OnEnter(ctx)
+	if tost.Actions.OnEnter != nil {
+		err = tost.Actions.OnEnter(ctx)
 		if err != nil {
 			return 0, 0, 0, err
 		}
@@ -100,12 +100,12 @@ func (sm *Simple) AToA(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (
 		return 0, 0, errors.New("\"from\" is not set in context")
 	}
 
-	fromState, err := sm.core.GetState(from)
+	fromst, err := sm.core.GetState(castst(from))
 	if err != nil {
 		return 0, 0, err
 	}
 
-	toState, err := sm.core.Transition(from, EventAToA)
+	tost, err := sm.core.Transition(castst(from), castet(EventAToA))
 	if err != nil {
 		return 0, 0, err
 	}
@@ -121,15 +121,15 @@ func (sm *Simple) AToA(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (
 
 	}
 
-	if fromState.Actions.OnExit != nil {
-		err = fromState.Actions.OnExit(ctx)
+	if fromst.Actions.OnExit != nil {
+		err = fromst.Actions.OnExit(ctx)
 		if err != nil {
 			return 0, 0, err
 		}
 	}
 
-	if toState.Actions.OnEnter != nil {
-		err = toState.Actions.OnEnter(ctx)
+	if tost.Actions.OnEnter != nil {
+		err = tost.Actions.OnEnter(ctx)
 		if err != nil {
 			return 0, 0, err
 		}
@@ -144,12 +144,12 @@ func (sm *Simple) BToC(ctx context.Context, mis string) (mos string, err error) 
 		return "", errors.New("\"from\" is not set in context")
 	}
 
-	fromState, err := sm.core.GetState(from)
+	fromst, err := sm.core.GetState(castst(from))
 	if err != nil {
 		return "", err
 	}
 
-	toState, err := sm.core.Transition(from, EventBToC)
+	tost, err := sm.core.Transition(castst(from), castet(EventBToC))
 	if err != nil {
 		return "", err
 	}
@@ -165,15 +165,15 @@ func (sm *Simple) BToC(ctx context.Context, mis string) (mos string, err error) 
 
 	}
 
-	if fromState.Actions.OnExit != nil {
-		err = fromState.Actions.OnExit(ctx)
+	if fromst.Actions.OnExit != nil {
+		err = fromst.Actions.OnExit(ctx)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	if toState.Actions.OnEnter != nil {
-		err = toState.Actions.OnEnter(ctx)
+	if tost.Actions.OnEnter != nil {
+		err = tost.Actions.OnEnter(ctx)
 		if err != nil {
 			return "", err
 		}
@@ -188,12 +188,12 @@ func (sm *Simple) BToA(ctx context.Context, sp1 decimal.Decimal) (sp2 string, er
 		return "", errors.New("\"from\" is not set in context")
 	}
 
-	fromState, err := sm.core.GetState(from)
+	fromst, err := sm.core.GetState(castst(from))
 	if err != nil {
 		return "", err
 	}
 
-	toState, err := sm.core.Transition(from, EventBToA)
+	tost, err := sm.core.Transition(castst(from), castet(EventBToA))
 	if err != nil {
 		return "", err
 	}
@@ -209,15 +209,15 @@ func (sm *Simple) BToA(ctx context.Context, sp1 decimal.Decimal) (sp2 string, er
 
 	}
 
-	if fromState.Actions.OnExit != nil {
-		err = fromState.Actions.OnExit(ctx)
+	if fromst.Actions.OnExit != nil {
+		err = fromst.Actions.OnExit(ctx)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	if toState.Actions.OnEnter != nil {
-		err = toState.Actions.OnEnter(ctx)
+	if tost.Actions.OnEnter != nil {
+		err = tost.Actions.OnEnter(ctx)
 		if err != nil {
 			return "", err
 		}
@@ -247,35 +247,35 @@ func ToCtx(ctx context.Context) (State, bool) {
 func NewSimple(actions *Actions, callbacks *Callbacks) *Simple {
 	stateConfigs := []esmaq.StateConfig{
 		{
-			From:    StateA,
+			From:    castst(StateA),
 			Actions: actions.A,
 			Transitions: []esmaq.TransitionConfig{
 				{
-					Event: EventAToB,
-					To:    StateB,
+					Event: castet(EventAToB),
+					To:    castst(StateB),
 				},
 				{
-					Event: EventAToA,
-					To:    StateA,
+					Event: castet(EventAToA),
+					To:    castst(StateA),
 				},
 			},
 		},
 		{
-			From:    StateB,
+			From:    castst(StateB),
 			Actions: actions.B,
 			Transitions: []esmaq.TransitionConfig{
 				{
-					Event: EventBToC,
-					To:    StateC,
+					Event: castet(EventBToC),
+					To:    castst(StateC),
 				},
 				{
-					Event: EventBToA,
-					To:    StateA,
+					Event: castet(EventBToA),
+					To:    castst(StateA),
 				},
 			},
 		},
 		{
-			From:        StateC,
+			From:        castst(StateC),
 			Actions:     actions.C,
 			Transitions: []esmaq.TransitionConfig{},
 		},
@@ -287,4 +287,12 @@ func NewSimple(actions *Actions, callbacks *Callbacks) *Simple {
 	}
 
 	return simple
+}
+
+func castst(s State) esmaq.StateType {
+	return esmaq.StateType(s)
+}
+
+func castet(e Event) esmaq.EventType {
+	return esmaq.EventType(e)
 }
