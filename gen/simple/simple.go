@@ -38,41 +38,41 @@ type Simple struct {
 }
 
 type Callbacks struct {
-	AToB func(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, err error)
+	AToB func(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, oi64 int64, err error)
 	AToA func(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (of32 float32, of64 float32, err error)
 	BToC func(ctx context.Context, mis string) (mos string, err error)
 	BToA func(ctx context.Context, sp1 decimal.Decimal) (sp2 string, err error)
 }
 
 type Actions struct {
-	C esmaq.Actions
 	A esmaq.Actions
 	B esmaq.Actions
+	C esmaq.Actions
 }
 
-func (sm *Simple) AToB(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, err error) {
+func (sm *Simple) AToB(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, oi64 int64, err error) {
 	from, ok := fromCtx(ctx)
 	if !ok {
-		return 0, 0, errors.New("\"from\" is not set in context")
+		return 0, 0, 0, errors.New("\"from\" is not set in context")
 	}
 
 	fromState, err := sm.core.GetState(from)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
 	toState, err := sm.core.Transition(from, EventAToB)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
 	// inject "to" in context
 	ctx = ctxWtTo(ctx, StateB)
 
 	if sm.callbacks != nil && sm.callbacks.AToB != nil {
-		oi, oi32, err = sm.callbacks.AToB(ctx, ii, ii32, ii64)
+		oi, oi32, oi64, err = sm.callbacks.AToB(ctx, ii, ii32, ii64)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
 
 	}
@@ -80,18 +80,18 @@ func (sm *Simple) AToB(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi 
 	if fromState.Actions.OnExit != nil {
 		err = fromState.Actions.OnExit(ctx)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
 	}
 
 	if toState.Actions.OnEnter != nil {
 		err = toState.Actions.OnEnter(ctx)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
 	}
 
-	return oi, oi32, nil
+	return oi, oi32, oi64, nil
 }
 
 func (sm *Simple) AToA(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (of32 float32, of64 float32, err error) {

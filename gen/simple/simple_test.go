@@ -77,8 +77,14 @@ func TestSimple(t *testing.T) {
 				},
 			},
 		}, &simple.Callbacks{
-			AToB: func(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, err error) {
-				return 0, 0, nil
+			AToB: func(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, oi64 int64, err error) {
+				to, ok := simple.ToCtx(ctx)
+				if !ok {
+					return 0, 0, 0, errors.New("to not injected in ctx")
+				}
+
+				assert.Equal(t, simple.StateB, to)
+				return 0, 0, 0, nil
 			},
 			AToA: func(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (of32 float32, of64 float32, err error) {
 				return 0, 0, nil
@@ -97,7 +103,7 @@ func TestSimple(t *testing.T) {
 		_, _, err := sm.AToA(ctx, 0, 0, 0)
 		assert.NoError(t, err)
 
-		_, _, err = sm.AToB(ctx, 0, 0, 0)
+		_, _, _, err = sm.AToB(ctx, 0, 0, 0)
 		assert.NoError(t, err)
 
 		ctx = simple.CtxWtFrom(ctx, simple.StateB)
@@ -141,8 +147,8 @@ func TestSimple(t *testing.T) {
 				AToA: func(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (of32 float32, of64 float32, err error) {
 					return 0, 0, nil
 				},
-				AToB: func(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, err error) {
-					return 0, 0, nil
+				AToB: func(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, oi64 int64, err error) {
+					return 0, 0, 0, nil
 				},
 				BToA: func(ctx context.Context, sp1 decimal.Decimal) (sp2 string, err error) {
 					return "", nil
@@ -156,7 +162,7 @@ func TestSimple(t *testing.T) {
 			_, _, err := sm.AToA(ctx, 0, 0, 0)
 			assert.Error(t, err)
 
-			_, _, err = sm.AToB(ctx, 0, 0, 0)
+			_, _, _, err = sm.AToB(ctx, 0, 0, 0)
 			assert.Error(t, err)
 
 			_, err = sm.BToA(ctx, decimal.NewFromFloat(0))
@@ -196,8 +202,8 @@ func TestSimple(t *testing.T) {
 				AToA: func(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (of32 float32, of64 float32, err error) {
 					return 0, 0, nil
 				},
-				AToB: func(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, err error) {
-					return 0, 0, nil
+				AToB: func(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, oi64 int64, err error) {
+					return 0, 0, 0, nil
 				},
 				BToA: func(ctx context.Context, sp1 decimal.Decimal) (sp2 string, err error) {
 					return "", nil
@@ -212,7 +218,7 @@ func TestSimple(t *testing.T) {
 			_, _, err := sm.AToA(ctx, 0, 0, 0)
 			assert.Error(t, err)
 
-			_, _, err = sm.AToB(ctx, 0, 0, 0)
+			_, _, _, err = sm.AToB(ctx, 0, 0, 0)
 			assert.Error(t, err)
 
 			ctx = simple.CtxWtFrom(ctx, simple.StateB)

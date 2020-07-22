@@ -37,17 +37,15 @@ func genSimple(output io.Writer) error {
 					Event: "a_to_b",
 					To:    "b",
 					Callback: gen.Callback{
-						Ins: gen.Ins{
-							"ii":   int(0),
-							"ii32": int32(0),
-							"ii64": int64(0),
+						Ins: []gen.Arg{
+							{ID: "ii", T: int(0)},
+							{ID: "ii32", T: int32(0)},
+							{ID: "ii64", T: int64(0)},
 						},
-						Outs: gen.Outs{
-							"oi":   int(0),
-							"oi32": int32(0),
-							// FIXME: there is an issue with the last param (err)
-							// when we define more than 2 output parameters
-							// "oi64": int64(0),
+						Outs: []gen.Arg{
+							{ID: "oi", T: int(0)},
+							{ID: "oi32", T: int32(0)},
+							{ID: "oi64", T: int64(0)},
 						},
 					},
 				},
@@ -56,14 +54,14 @@ func genSimple(output io.Writer) error {
 					Event: "a_to_a",
 					To:    "a",
 					Callback: gen.Callback{
-						Ins: gen.Ins{
-							"iu":   uint(0),
-							"iu32": uint32(0),
-							"iu64": uint64(0),
+						Ins: []gen.Arg{
+							{ID: "iu", T: uint(0)},
+							{ID: "iu32", T: uint32(0)},
+							{ID: "iu64", T: uint64(0)},
 						},
-						Outs: gen.Outs{
-							"of32": float32(0),
-							"of64": float64(0),
+						Outs: []gen.Arg{
+							{ID: "of32", T: float32(0)},
+							{ID: "of64", T: float64(0)},
 						},
 					},
 				},
@@ -76,11 +74,11 @@ func genSimple(output io.Writer) error {
 					To:    "c",
 					Event: "b_to_c",
 					Callback: gen.Callback{
-						Ins: gen.Ins{
-							"mis": "",
+						Ins: []gen.Arg{
+							{ID: "mis", T: ""},
 						},
-						Outs: gen.Outs{
-							"mos": "",
+						Outs: []gen.Arg{
+							{ID: "mos", T: ""},
 						},
 					},
 				},
@@ -88,11 +86,11 @@ func genSimple(output io.Writer) error {
 					To:    "a",
 					Event: "b_to_a",
 					Callback: gen.Callback{
-						Ins: gen.Ins{
-							"sp1": decimal.Decimal{},
+						Ins: []gen.Arg{
+							{ID: "sp1", T: decimal.Decimal{}},
 						},
-						Outs: gen.Outs{
-							"sp2": "",
+						Outs: []gen.Arg{
+							{ID: "sp2", T: ""},
 						},
 					},
 				},

@@ -36,15 +36,14 @@ type Transition struct {
 
 // Callback is a callback function signature
 type Callback struct {
-	Ins  Ins
-	Outs Outs
+	Ins  []Arg
+	Outs []Arg
 }
 
-// Ins are input parameters
-type Ins map[string]interface{}
-
-// Outs are output parameters
-type Outs map[string]interface{}
+type Arg struct {
+	ID string
+	T  interface{}
+}
 
 // Gen generates the state machine
 func Gen(schema Schema, out io.Writer) error {
@@ -69,26 +68,34 @@ func Gen(schema Schema, out io.Writer) error {
 	rcvr := "sm"
 	rcvrType := "*" + name
 
-	// get all possible states
-	states := map[esmaq.StateType]State{}
+	states := []State{}
 	for _, state := range schema.States {
-		states[state.From] = state
+		states = append(states, state)
 	}
-	for _, state := range schema.States {
-		for _, trsn := range state.Transitions {
-			_, ok := states[trsn.To]
-			if !ok {
-				states[trsn.To] = State{
-					From: trsn.To,
-				}
+
+	isIn := func(s esmaq.StateType) bool {
+		for _, state := range states {
+			if s == state.From {
+				return true
 			}
+		}
+		return false
+	}
+
+	for _, stateCfg := range schema.States {
+		for _, trsnCfg := range stateCfg.Transitions {
+			if isIn(trsnCfg.To) {
+				continue
+			}
+
+			states = append(states, State{From: trsnCfg.To})
 		}
 	}
 
 	f.Type().Id("State").Op("=").Qual(pkgPath, "StateType")
 	f.Const().DefsFunc(func(g *jen.Group) {
-		for state := range states {
-			s := string(state)
+		for _, state := range states {
+			s := string(state.From)
 			sName := toCam(fmt.Sprintf("state_%s", s))
 			g.Id(sName).Id("State").Op("=").Lit(s)
 		}
@@ -113,22 +120,21 @@ func Gen(schema Schema, out io.Writer) error {
 		g.Id("toKey")
 	})
 
-	cbcArgs := []jen.Code{}
+	// callback function arguments
+	cbFnArgs := []jen.Code{}
+	// transition methods
 	methods := []jen.Code{}
-
 	for _, state := range states {
 		for _, trsn := range state.Transitions {
 			fnName := toCam(string(trsn.Event))
 
 			// input args
-			ins := []jen.Code{
-				jen.Id("ctx").Qual("context", "Context"),
-			}
+			ins := []jen.Code{jen.Id("ctx").Qual("context", "Context")}
 			// input arg identifiers
 			inIDs := []jen.Code{jen.Id("ctx")}
-			for id, v := range trsn.Callback.Ins {
-				ins = append(ins, getArg(id, reflect.TypeOf(v)))
-				inIDs = append(inIDs, jen.Id(id))
+			for _, in := range trsn.Callback.Ins {
+				ins = append(ins, getArg(in.ID, reflect.TypeOf(in.T)))
+				inIDs = append(inIDs, jen.Id(in.ID))
 			}
 
 			// output args
@@ -138,20 +144,22 @@ func Gen(schema Schema, out io.Writer) error {
 			// return args when error happened
 			errRets := []jen.Code{}
 
-			for id, v := range trsn.Callback.Outs {
-				t := reflect.TypeOf(v)
-				outs = append(outs, getArg(id, t))
-				outIDs = append(outIDs, jen.Id(id))
+			for _, out := range trsn.Callback.Outs {
+				t := reflect.TypeOf(out.T)
+				outs = append(outs, getArg(out.ID, t))
+				outIDs = append(outIDs, jen.Id(out.ID))
 				errRets = append(errRets, getZeroVal(t))
 			}
 
 			// return args when no error happened
-			okRets := append(outIDs, jen.Nil())
+			okRets := append(clonec(outIDs), jen.Nil())
+
+			// add err in as last arg
 			outs = append(outs, jen.Id("err").Error())
 			outIDs = append(outIDs, jen.Id("err"))
 
 			cbName := fnName
-			cbcArgs = append(cbcArgs, jen.Id(cbName).Func().
+			cbFnArgs = append(cbFnArgs, jen.Id(cbName).Func().
 				Params(ins...).Params(outs...))
 
 			method := jen.Func().Params(jen.Id(rcvr).Id(rcvrType)).
@@ -160,16 +168,17 @@ func Gen(schema Schema, out io.Writer) error {
 					g.List(jen.Id("from"), jen.Id("ok")).
 						Op(":=").Id("fromCtx").Call(jen.Id("ctx"))
 					g.If(jen.Op("!").Id("ok")).
-						Block(jen.Return(append(errRets,
-							jen.Qual("errors", "New").
-								Call(jen.Lit(`"from" is not set in context`)))...)).
+						BlockFunc(func(g *jen.Group) {
+							g.Return(append(clonec(errRets), jen.Qual("errors", "New").
+								Call(jen.Lit(`"from" is not set in context`)))...)
+						}).
 						Line()
 
 					g.List(jen.Id("fromState"), jen.Id("err")).Op(":=").Id(rcvr).
 						Dot("core").Dot("GetState").Call(jen.Id("from"))
 					g.If(jen.Err().Op("!=").Nil()).
 						BlockFunc(func(g *jen.Group) {
-							g.Return(append(errRets, jen.Id("err"))...)
+							g.Return(append(clonec(errRets), jen.Id("err"))...)
 						}).Line()
 
 					g.List(jen.Id("toState"), jen.Id("err")).
@@ -179,7 +188,7 @@ func Gen(schema Schema, out io.Writer) error {
 						Call(jen.Id("from"), jen.Id(toCam("event_"+string(trsn.Event))))
 					g.If(jen.Err().Op("!=").Nil()).
 						BlockFunc(func(g *jen.Group) {
-							g.Return(append(errRets, jen.Id("err"))...)
+							g.Return(append(clonec(errRets), jen.Id("err"))...)
 						}).Line()
 
 					toState := toCam("state_" + string(trsn.To))
@@ -194,7 +203,7 @@ func Gen(schema Schema, out io.Writer) error {
 								Dot(cbName).Call(inIDs...)
 							g.If(jen.Err().Op("!=").Nil()).
 								BlockFunc(func(g *jen.Group) {
-									g.Return(append(errRets, jen.Id("err"))...)
+									g.Return(append(clonec(errRets), jen.Id("err"))...)
 								}).Line()
 						}).
 						Line()
@@ -208,7 +217,7 @@ func Gen(schema Schema, out io.Writer) error {
 								Dot("OnExit").Call(jen.Id("ctx"))
 							g.If(jen.Err().Op("!=").Nil()).
 								BlockFunc(func(g *jen.Group) {
-									g.Return(append(errRets, jen.Id("err"))...)
+									g.Return(append(clonec(errRets), jen.Id("err"))...)
 								})
 						}).
 						Line()
@@ -219,7 +228,7 @@ func Gen(schema Schema, out io.Writer) error {
 								Call(jen.Id("ctx"))
 							g.If(jen.Err().Op("!=").Nil()).
 								BlockFunc(func(g *jen.Group) {
-									g.Return(append(errRets, jen.Id("err"))...)
+									g.Return(append(clonec(errRets), jen.Id("err"))...)
 								})
 						}).
 						Line()
@@ -238,10 +247,10 @@ func Gen(schema Schema, out io.Writer) error {
 	).Line()
 
 	// callbacks type def
-	f.Type().Id("Callbacks").Struct(cbcArgs...).Line()
+	f.Type().Id("Callbacks").Struct(cbFnArgs...).Line()
 	f.Type().Id("Actions").StructFunc(func(g *jen.Group) {
-		for state := range states {
-			g.Id(toCam(string(state))).Qual(pkgPath, "Actions")
+		for _, state := range states {
+			g.Id(toCam(string(state.From))).Qual(pkgPath, "Actions")
 		}
 	})
 
@@ -411,4 +420,12 @@ func toCam(s string) string {
 
 func toLowCam(s string) string {
 	return strcase.ToLowerCamel(s)
+}
+
+func clonec(c1 []jen.Code) []jen.Code {
+	c2 := []jen.Code{}
+	for _, c := range c1 {
+		c2 = append(c2, c)
+	}
+	return c2
 }
