@@ -10,6 +10,10 @@ import (
 
 type State esmaq.StateType
 
+func (s State) String() string {
+	return string(s)
+}
+
 const (
 	StateA State = "a"
 	StateB State = "b"
@@ -17,6 +21,10 @@ const (
 )
 
 type Event esmaq.EventType
+
+func (e Event) String() string {
+	return string(e)
+}
 
 const (
 	EventAToB Event = "a_to_b"

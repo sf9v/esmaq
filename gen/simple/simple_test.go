@@ -14,6 +14,11 @@ import (
 
 func TestSimple(t *testing.T) {
 
+	t.Run("stringer", func(t *testing.T) {
+		assert.Equal(t, "a", simple.StateA.String())
+		assert.Equal(t, "a_to_a", simple.EventAToA.String())
+	})
+
 	t.Run("ok", func(t *testing.T) {
 		callCounts := map[string]int{}
 

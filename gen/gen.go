@@ -92,7 +92,10 @@ func Gen(schema Schema, out io.Writer) error {
 	}
 
 	// state types
-	f.Type().Id("State").Qual(pkgPath, "StateType")
+	f.Type().Id("State").Qual(pkgPath, "StateType").Line()
+	f.Func().Params(jen.Id("s").Id("State")).Id("String").
+		Params().Params(jen.String()).
+		Block(jen.Return(jen.String().Call(jen.Id("s"))))
 	f.Const().DefsFunc(func(g *jen.Group) {
 		for _, state := range states {
 			s := string(state.From)
@@ -102,6 +105,9 @@ func Gen(schema Schema, out io.Writer) error {
 
 	// event types
 	f.Type().Id("Event").Qual(pkgPath, "EventType")
+	f.Func().Params(jen.Id("e").Id("Event")).Id("String").
+		Params().Params(jen.String()).
+		Block(jen.Return(jen.String().Call(jen.Id("e"))))
 	f.Const().DefsFunc(func(g *jen.Group) {
 		for _, state := range states {
 			for _, trsn := range state.Transitions {
