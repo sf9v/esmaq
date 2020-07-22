@@ -8,24 +8,30 @@ import (
 	esmaq "github.com/stevenferrer/esmaq"
 )
 
+// State is the state type
 type State esmaq.StateType
 
+// String implements Stringer for State
 func (s State) String() string {
 	return string(s)
 }
 
+// List of state types
 const (
 	StateA State = "a"
 	StateB State = "b"
 	StateC State = "c"
 )
 
+// Event is the event type
 type Event esmaq.EventType
 
+// String implements Stringer for Event
 func (e Event) String() string {
 	return string(e)
 }
 
+// List of event types
 const (
 	EventAToB Event = "a_to_b"
 	EventAToA Event = "a_to_a"
@@ -33,18 +39,22 @@ const (
 	EventBToA Event = "b_to_a"
 )
 
+// ctxKey is a context key
 type ctxKey int
 
+// List of context keys
 const (
 	fromKey ctxKey = iota
 	toKey
 )
 
+// Simple is a state machine
 type Simple struct {
 	core      *esmaq.Core
 	callbacks *Callbacks
 }
 
+// Callbacks defines the state machine callbacks
 type Callbacks struct {
 	AToB func(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, oi64 int64, err error)
 	AToA func(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (of32 float32, of64 float32, err error)
@@ -52,12 +62,14 @@ type Callbacks struct {
 	BToA func(ctx context.Context, sp1 decimal.Decimal) (sp2 string, err error)
 }
 
+// Actions defines the state machine actions
 type Actions struct {
 	A esmaq.Actions
 	B esmaq.Actions
 	C esmaq.Actions
 }
 
+// AToB is a transition method for EventAToB
 func (sm *Simple) AToB(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, oi64 int64, err error) {
 	from, ok := fromCtx(ctx)
 	if !ok {
@@ -101,6 +113,7 @@ func (sm *Simple) AToB(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi 
 	return oi, oi32, oi64, nil
 }
 
+// AToA is a transition method for EventAToA
 func (sm *Simple) AToA(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (of32 float32, of64 float32, err error) {
 	from, ok := fromCtx(ctx)
 	if !ok {
@@ -144,6 +157,7 @@ func (sm *Simple) AToA(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (
 	return of32, of64, nil
 }
 
+// BToC is a transition method for EventBToC
 func (sm *Simple) BToC(ctx context.Context, mis string) (mos string, err error) {
 	from, ok := fromCtx(ctx)
 	if !ok {
@@ -187,6 +201,7 @@ func (sm *Simple) BToC(ctx context.Context, mis string) (mos string, err error) 
 	return mos, nil
 }
 
+// BToA is a transition method for EventBToA
 func (sm *Simple) BToA(ctx context.Context, sp1 decimal.Decimal) (sp2 string, err error) {
 	from, ok := fromCtx(ctx)
 	if !ok {
@@ -230,73 +245,76 @@ func (sm *Simple) BToA(ctx context.Context, sp1 decimal.Decimal) (sp2 string, er
 	return sp2, nil
 }
 
+// CtxWtFrom injects `from` state to context
 func CtxWtFrom(ctx context.Context, from State) context.Context {
 	return context.WithValue(ctx, fromKey, from)
 }
 
+// ctxWtTo injects 'to' state to context
 func ctxWtTo(ctx context.Context, to State) context.Context {
 	return context.WithValue(ctx, toKey, to)
 }
 
+// fromCtx retrieves 'from' state from context
 func fromCtx(ctx context.Context) (State, bool) {
 	from, ok := ctx.Value(fromKey).(State)
 	return from, ok
 }
 
+// ToCtx retrieves 'to' state from context
 func ToCtx(ctx context.Context) (State, bool) {
 	to, ok := ctx.Value(toKey).(State)
 	return to, ok
 }
 
-func NewSimple(actions *Actions, callbacks *Callbacks) *Simple {
-	stateConfigs := []esmaq.StateConfig{
-		{
-			From:    castst(StateA),
-			Actions: actions.A,
-			Transitions: []esmaq.TransitionConfig{
-				{
-					Event: castet(EventAToB),
-					To:    castst(StateB),
-				},
-				{
-					Event: castet(EventAToA),
-					To:    castst(StateA),
-				},
-			},
-		},
-		{
-			From:    castst(StateB),
-			Actions: actions.B,
-			Transitions: []esmaq.TransitionConfig{
-				{
-					Event: castet(EventBToC),
-					To:    castst(StateC),
-				},
-				{
-					Event: castet(EventBToA),
-					To:    castst(StateA),
-				},
-			},
-		},
-		{
-			From:        castst(StateC),
-			Actions:     actions.C,
-			Transitions: []esmaq.TransitionConfig{},
-		},
-	}
-
-	simple := &Simple{
-		core:      esmaq.NewCore(stateConfigs),
+// NewSimple is a factory for state machine Simple
+func NewSimple(callbacks *Callbacks, actions *Actions) *Simple {
+	return &Simple{
 		callbacks: callbacks,
+		core: esmaq.NewCore([]esmaq.StateConfig{
+			{
+				From:    castst(StateA),
+				Actions: actions.A,
+				Transitions: []esmaq.TransitionConfig{
+					{
+						Event: castet(EventAToB),
+						To:    castst(StateB),
+					},
+					{
+						Event: castet(EventAToA),
+						To:    castst(StateA),
+					},
+				},
+			},
+			{
+				From:    castst(StateB),
+				Actions: actions.B,
+				Transitions: []esmaq.TransitionConfig{
+					{
+						Event: castet(EventBToC),
+						To:    castst(StateC),
+					},
+					{
+						Event: castet(EventBToA),
+						To:    castst(StateA),
+					},
+				},
+			},
+			{
+				From:        castst(StateC),
+				Actions:     actions.C,
+				Transitions: []esmaq.TransitionConfig{},
+			},
+		}),
 	}
-
-	return simple
 }
 
+// castst casts State to esmaq.StateType
 func castst(s State) esmaq.StateType {
 	return esmaq.StateType(s)
 }
 
+// castet casts Event to esmaq.EventType
 func castet(e Event) esmaq.EventType {
 	return esmaq.EventType(e)
 }

@@ -26,7 +26,26 @@ func TestSimple(t *testing.T) {
 			return fmt.Sprintf("%s_%s", s, a)
 		}
 
-		sm := simple.NewSimple(&simple.Actions{
+		sm := simple.NewSimple(&simple.Callbacks{
+			AToB: func(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, oi64 int64, err error) {
+				to, ok := simple.ToCtx(ctx)
+				if !ok {
+					return 0, 0, 0, errors.New("to not injected in ctx")
+				}
+
+				assert.Equal(t, simple.StateB, to)
+				return 0, 0, 0, nil
+			},
+			AToA: func(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (of32 float32, of64 float32, err error) {
+				return 0, 0, nil
+			},
+			BToA: func(ctx context.Context, sp1 decimal.Decimal) (sp2 string, err error) {
+				return "", nil
+			},
+			BToC: func(ctx context.Context, mis string) (mos string, err error) {
+				return "", nil
+			},
+		}, &simple.Actions{
 			A: esmaq.Actions{
 				OnEnter: func(_ context.Context) error {
 					k := key(simple.StateA, "enter")
@@ -81,25 +100,6 @@ func TestSimple(t *testing.T) {
 					return nil
 				},
 			},
-		}, &simple.Callbacks{
-			AToB: func(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, oi64 int64, err error) {
-				to, ok := simple.ToCtx(ctx)
-				if !ok {
-					return 0, 0, 0, errors.New("to not injected in ctx")
-				}
-
-				assert.Equal(t, simple.StateB, to)
-				return 0, 0, 0, nil
-			},
-			AToA: func(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (of32 float32, of64 float32, err error) {
-				return 0, 0, nil
-			},
-			BToA: func(ctx context.Context, sp1 decimal.Decimal) (sp2 string, err error) {
-				return "", nil
-			},
-			BToC: func(ctx context.Context, mis string) (mos string, err error) {
-				return "", nil
-			},
 		})
 
 		ctx := context.Background()
@@ -123,7 +123,20 @@ func TestSimple(t *testing.T) {
 
 	t.Run("errors", func(t *testing.T) {
 		t.Run("from state not set", func(t *testing.T) {
-			sm := simple.NewSimple(&simple.Actions{
+			sm := simple.NewSimple(&simple.Callbacks{
+				AToA: func(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (of32 float32, of64 float32, err error) {
+					return 0, 0, nil
+				},
+				AToB: func(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, oi64 int64, err error) {
+					return 0, 0, 0, nil
+				},
+				BToA: func(ctx context.Context, sp1 decimal.Decimal) (sp2 string, err error) {
+					return "", nil
+				},
+				BToC: func(ctx context.Context, mis string) (mos string, err error) {
+					return "", nil
+				},
+			}, &simple.Actions{
 				A: esmaq.Actions{
 					OnEnter: func(_ context.Context) error {
 						return errors.New("enter a error")
@@ -147,19 +160,6 @@ func TestSimple(t *testing.T) {
 					OnExit: func(_ context.Context) error {
 						return errors.New("exit c error")
 					},
-				},
-			}, &simple.Callbacks{
-				AToA: func(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (of32 float32, of64 float32, err error) {
-					return 0, 0, nil
-				},
-				AToB: func(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, oi64 int64, err error) {
-					return 0, 0, 0, nil
-				},
-				BToA: func(ctx context.Context, sp1 decimal.Decimal) (sp2 string, err error) {
-					return "", nil
-				},
-				BToC: func(ctx context.Context, mis string) (mos string, err error) {
-					return "", nil
 				},
 			})
 
@@ -178,7 +178,20 @@ func TestSimple(t *testing.T) {
 		})
 
 		t.Run("action errors", func(t *testing.T) {
-			sm := simple.NewSimple(&simple.Actions{
+			sm := simple.NewSimple(&simple.Callbacks{
+				AToA: func(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (of32 float32, of64 float32, err error) {
+					return 0, 0, nil
+				},
+				AToB: func(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, oi64 int64, err error) {
+					return 0, 0, 0, nil
+				},
+				BToA: func(ctx context.Context, sp1 decimal.Decimal) (sp2 string, err error) {
+					return "", nil
+				},
+				BToC: func(ctx context.Context, mis string) (mos string, err error) {
+					return "", nil
+				},
+			}, &simple.Actions{
 				A: esmaq.Actions{
 					OnEnter: func(_ context.Context) error {
 						return errors.New("enter a error")
@@ -202,19 +215,6 @@ func TestSimple(t *testing.T) {
 					OnExit: func(_ context.Context) error {
 						return errors.New("exit c error")
 					},
-				},
-			}, &simple.Callbacks{
-				AToA: func(ctx context.Context, iu uint, iu32 uint32, iu64 uint64) (of32 float32, of64 float32, err error) {
-					return 0, 0, nil
-				},
-				AToB: func(ctx context.Context, ii int, ii32 int32, ii64 int64) (oi int, oi32 int32, oi64 int64, err error) {
-					return 0, 0, 0, nil
-				},
-				BToA: func(ctx context.Context, sp1 decimal.Decimal) (sp2 string, err error) {
-					return "", nil
-				},
-				BToC: func(ctx context.Context, mis string) (mos string, err error) {
-					return "", nil
 				},
 			})
 
