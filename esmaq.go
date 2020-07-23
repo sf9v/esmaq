@@ -16,12 +16,13 @@ type StateConfig struct {
 	Transitions []TransitionConfig
 }
 
+// Actions are state machine actions or life-cycle events
 type Actions struct {
 	OnEnter func(context.Context) error
 	OnExit  func(context.Context) error
 }
 
-// Transitions is a transition config
+// TransitionConfig is a transition config
 type TransitionConfig struct {
 	To    StateType
 	Event EventType

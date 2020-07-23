@@ -17,7 +17,7 @@ type Core struct {
 	stateMap map[StateType]*State
 }
 
-// Transition will return an error if transition is not allowed
+// Transition returns an error if transition is not allowed
 func (c *Core) Transition(from StateType, event EventType) (*State, error) {
 	// get "from" state
 	fromState, err := c.GetState(from)
@@ -40,6 +40,7 @@ func (c *Core) Transition(from StateType, event EventType) (*State, error) {
 	return toState, nil
 }
 
+// GetState returns the state
 func (c *Core) GetState(s StateType) (*State, error) {
 	st, ok := c.stateMap[s]
 	if !ok {

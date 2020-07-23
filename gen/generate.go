@@ -3,7 +3,6 @@ package gen
 import (
 	"fmt"
 	"io"
-	"reflect"
 
 	"github.com/dave/jennifer/jen"
 	"github.com/iancoleman/strcase"
@@ -23,11 +22,13 @@ type Schema struct {
 	States []State
 }
 
+// State is the state configuration
 type State struct {
 	From        esmaq.StateType
 	Transitions []Transition
 }
 
+// Transition is the transition configuration
 type Transition struct {
 	To       esmaq.StateType
 	Event    esmaq.EventType
@@ -40,6 +41,7 @@ type Callback struct {
 	Outs []Param
 }
 
+// Param is a callback parameter
 type Param struct {
 	ID string
 	V  interface{}
@@ -172,6 +174,7 @@ func Generate(schema Schema, out io.Writer) error {
 			cbFnArgs = append(cbFnArgs, jen.Id(cbName).Func().
 				Params(ins...).Params(outs...))
 
+			// transition methods
 			comment := fmt.Sprintf("%s is a transition method for %s", fnName, etName(trsn.Event))
 			method := jen.Comment(comment).Line().
 				Func().Params(jen.Id(rcvr).Id(rcvrType)).Id(fnName).
@@ -233,7 +236,7 @@ func Generate(schema Schema, out io.Writer) error {
 		}
 	}
 
-	// type definition
+	// state machine type definition
 	f.Comment(fmt.Sprintf("%s is a state machine", fsmName)).Line().
 		Type().Id(fsmName).Struct(
 		jen.Id("core").Op("*").Qual(pkgPath, "Core"),
@@ -289,11 +292,11 @@ func Generate(schema Schema, out io.Writer) error {
 			Dot("Value").Call(jen.Id("toKey")).Assert(jen.Id("State")),
 			jen.Return(jen.Id("to"), jen.Id("ok"))).Line()
 
-	// factory
-	factoryName := "New" + toCamel(fsmName)
+	// state machine factory
+	factory := "New" + toCamel(fsmName)
 	f.Comment(fmt.Sprintf("%s is a factory for state machine %s",
-		factoryName, fsmName))
-	f.Func().Id(factoryName).Params(jen.Id("callbacks").Op("*").Id("Callbacks"),
+		factory, fsmName))
+	f.Func().Id(factory).Params(jen.Id("callbacks").Op("*").Id("Callbacks"),
 		jen.Id("actions").Op("*").Id("Actions")).
 		Params(jen.Id("*" + fsmName)).Block(jen.Return(jen.Op("&").Id(fsmName).
 		Block(jen.Id("callbacks").Op(":").Id("callbacks").Op(","),
@@ -323,6 +326,7 @@ func Generate(schema Schema, out io.Writer) error {
 					})).
 				Op(",")))).Line()
 
+	// cast helpers
 	f.Comment("castst casts State to esmaq.StateType").Line().
 		Func().Id("castst").Params(jen.Id("s").Id("State")).
 		Params(jen.Qual(pkgPath, "StateType")).
@@ -352,12 +356,4 @@ func stName(s esmaq.StateType) string {
 
 func etName(e esmaq.EventType) string {
 	return toCamel("event_" + string(e))
-}
-
-func indirect(t reflect.Type) reflect.Type {
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-
-	return t
 }
