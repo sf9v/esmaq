@@ -93,7 +93,7 @@ func Generate(schema Schema, out io.Writer) error {
 
 	// state types
 	f.Comment("State is the state type").Line().
-		Type().Id("State").Qual(pkgPath, "StateType").Line()
+		Type().Id("State").String().Line()
 	f.Comment("String implements Stringer for State").Line().
 		Func().Params(jen.Id("s").Id("State")).Id("String").
 		Params().Params(jen.String()).
@@ -108,7 +108,7 @@ func Generate(schema Schema, out io.Writer) error {
 
 	// event types
 	f.Comment("Event is the event type").Line().
-		Type().Id("Event").Qual(pkgPath, "EventType")
+		Type().Id("Event").String()
 	f.Comment("String implements Stringer for Event").Line().
 		Func().Params(jen.Id("e").Id("Event")).Id("String").
 		Params().Params(jen.String()).

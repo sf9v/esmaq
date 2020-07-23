@@ -8,7 +8,7 @@ import (
 )
 
 // State is the state type
-type State esmaq.StateType
+type State string
 
 // String implements Stringer for State
 func (s State) String() string {
@@ -24,7 +24,7 @@ const (
 )
 
 // Event is the event type
-type Event esmaq.EventType
+type Event string
 
 // String implements Stringer for Event
 func (e Event) String() string {
