@@ -36,17 +36,17 @@ type Transition struct {
 
 // Callback is a callback function signature
 type Callback struct {
-	Ins  []Arg
-	Outs []Arg
+	Ins  []Param
+	Outs []Param
 }
 
-type Arg struct {
+type Param struct {
 	ID string
-	T  interface{}
+	V  interface{}
 }
 
-// Gen generates the state machine
-func Gen(schema Schema, out io.Writer) error {
+// Generate generates the state machine
+func Generate(schema Schema, out io.Writer) error {
 	// default name
 	fsmName := "StateMachine"
 	if len(schema.Name) > 0 {
@@ -144,7 +144,7 @@ func Gen(schema Schema, out io.Writer) error {
 			// input arg identifiers
 			inIDs := []jen.Code{jen.Id("ctx")}
 			for _, in := range trsn.Callback.Ins {
-				ins = append(ins, getArg(in.ID, reflect.TypeOf(in.T)))
+				ins = append(ins, getParamC(in.ID, in.V))
 				inIDs = append(inIDs, jen.Id(in.ID))
 			}
 
@@ -156,10 +156,9 @@ func Gen(schema Schema, out io.Writer) error {
 			errRets := []jen.Code{}
 
 			for _, out := range trsn.Callback.Outs {
-				t := reflect.TypeOf(out.T)
-				outs = append(outs, getArg(out.ID, t))
+				outs = append(outs, getParamC(out.ID, out.V))
 				outIDs = append(outIDs, jen.Id(out.ID))
-				errRets = append(errRets, getZeroVal(t))
+				errRets = append(errRets, getZeroValC(out.V))
 			}
 
 			// return args when no error happened
@@ -338,74 +337,8 @@ func Gen(schema Schema, out io.Writer) error {
 	return f.Render(out)
 }
 
-func getArg(id string, t reflect.Type) jen.Code {
-	c := jen.Id(id)
-
-	// FIXME: add support for reference types (t.String())
-	// built-in types
-	if t.Name() != "" {
-		switch t.String() {
-		case "int":
-			return c.Int()
-		case "int32":
-			return c.Int32()
-		case "int64":
-			return c.Int64()
-		case "uint":
-			return c.Uint()
-		case "uint32":
-			return c.Uint32()
-		case "uint64":
-			return c.Uint64()
-		case "float32":
-			return c.Float32()
-		case "float64":
-			return c.Float32()
-		case "string":
-			return c.String()
-		case "error":
-			return c.Error()
-		}
-	}
-
-	return c.Qual(t.PkgPath(), t.Name())
-}
-
-func getZeroVal(t reflect.Type) jen.Code {
-
-	// FIXME: add support for other types
-	// built-in types
-	if t.Name() != "" {
-		switch t.Name() {
-		case "int":
-			return jen.Lit(0)
-		case "int32":
-			return jen.Lit(0)
-		case "int64":
-			return jen.Lit(0)
-		case "uint":
-			return jen.Lit(0)
-		case "uint32":
-			return jen.Lit(0)
-		case "uint64":
-			return jen.Lit(0)
-		case "float32":
-			return jen.Lit(0)
-		case "float64":
-			return jen.Lit(0)
-		case "string":
-			return jen.Lit("")
-		}
-	}
-	return jen.Nil()
-}
-
 func toCamel(s string) string {
 	return strcase.ToCamel(s)
-}
-
-func toLowCamel(s string) string {
-	return strcase.ToLowerCamel(s)
 }
 
 func cloneC(c1 []jen.Code) []jen.Code {
@@ -419,4 +352,12 @@ func stName(s esmaq.StateType) string {
 
 func etName(e esmaq.EventType) string {
 	return toCamel("event_" + string(e))
+}
+
+func indirect(t reflect.Type) reflect.Type {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
+	return t
 }
