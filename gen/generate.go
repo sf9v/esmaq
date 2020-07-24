@@ -7,10 +7,10 @@ import (
 	"github.com/dave/jennifer/jen"
 	"github.com/iancoleman/strcase"
 
-	"github.com/stevenferrer/esmaq"
+	"github.com/sf9v/esmaq"
 )
 
-const pkgPath = "github.com/stevenferrer/esmaq"
+const pkgPath = "github.com/sf9v/esmaq"
 
 // Schema is the state machine schema
 type Schema struct {

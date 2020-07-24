@@ -1,4 +1,4 @@
-module github.com/stevenferrer/esmaq
+module github.com/sf9v/esmaq
 
 go 1.14
 

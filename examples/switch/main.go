@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/stevenferrer/esmaq/gen"
+	"github.com/sf9v/esmaq/gen"
 )
 
 func main() {

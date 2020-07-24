@@ -4,7 +4,7 @@ package main
 import (
 	"context"
 	"errors"
-	esmaq "github.com/stevenferrer/esmaq"
+	esmaq "github.com/sf9v/esmaq"
 )
 
 // State is the state type

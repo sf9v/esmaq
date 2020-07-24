@@ -5,7 +5,7 @@ import "context"
 type (
 	// StateType is a state type
 	StateType string
-	// Event is an event type
+	// EventType is an event type
 	EventType string
 )
 
